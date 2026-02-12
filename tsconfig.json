@@ -1,29 +1,24 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "experimentalDecorators": true,
-    "useDefineForClassFields": false,
-    "module": "ESNext",
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
-    "skipLibCheck": true,
-    "types": [
-      "node"
-    ],
-    "moduleResolution": "bundler",
-    "isolatedModules": true,
-    "moduleDetection": "force",
-    "allowJs": true,
-    "jsx": "react-jsx",
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    },
-    "allowImportingTsExtensions": true,
-    "noEmit": true
-  }
+    "strict": true,
+    "allowJs": false,
+    "skipLibCheck": false
+  },
+  "files": [],
+  "references": [
+    { "path": "./apps/web" },
+    { "path": "./apps/api" },
+    { "path": "./packages/shared-types" },
+    { "path": "./packages/shared-utils" },
+    { "path": "./packages/agent-core" },
+    { "path": "./packages/agent-policies" },
+    { "path": "./packages/agent-providers/openai" },
+    { "path": "./packages/agent-providers/gemini" },
+    { "path": "./packages/agent-providers/anthropic" },
+    { "path": "./packages/agent-tools/supplier" },
+    { "path": "./packages/agent-tools/buyer" },
+    { "path": "./packages/agent-tools/scoring" },
+    { "path": "./packages/agent-tools/vault" },
+    { "path": "./packages/agent-tools/syndication" }
+  ]
 }

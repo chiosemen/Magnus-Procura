@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+set -e
+
+pnpm lint
+pnpm typecheck
+pnpm governor
+pnpm boundary:check

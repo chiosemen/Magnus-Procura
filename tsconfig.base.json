@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "strict": true,
+    "allowJs": false,
+    "baseUrl": ".",
+    "paths": {
+      "@shared-types/*": ["packages/shared-types/dist/*"],
+      "@shared-utils/*": ["packages/shared-utils/dist/*"],
+      "@agent-core/*": ["packages/agent-core/dist/*"],
+      "@agent-policies/*": ["packages/agent-policies/dist/*"],
+      "@agent-provider-openai/*": ["packages/agent-providers/openai/dist/*"],
+      "@agent-provider-gemini/*": ["packages/agent-providers/gemini/dist/*"],
+      "@agent-provider-anthropic/*": ["packages/agent-providers/anthropic/dist/*"],
+      "@agent-tool-supplier/*": ["packages/agent-tools/supplier/dist/*"],
+      "@agent-tool-buyer/*": ["packages/agent-tools/buyer/dist/*"],
+      "@agent-tool-scoring/*": ["packages/agent-tools/scoring/dist/*"],
+      "@agent-tool-vault/*": ["packages/agent-tools/vault/dist/*"],
+      "@agent-tool-syndication/*": ["packages/agent-tools/syndication/dist/*"]
+    },
+    "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "useUnknownInCatchVariables": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true
+  }
+}

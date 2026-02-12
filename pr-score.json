@@ -1,0 +1,68 @@
+{
+  "score": 95,
+  "maxScore": 100,
+  "breakdown": {
+    "Security": {
+      "score": 25,
+      "max": 25
+    },
+    "Strictness & Type Safety": {
+      "score": 15,
+      "max": 15
+    },
+    "Architecture Boundaries": {
+      "score": 15,
+      "max": 15
+    },
+    "Observability": {
+      "score": 10,
+      "max": 10
+    },
+    "Testing Coverage": {
+      "score": 15,
+      "max": 15
+    },
+    "CI Integrity": {
+      "score": 10,
+      "max": 10
+    },
+    "Dependency Hygiene": {
+      "score": 5,
+      "max": 10
+    }
+  },
+  "hardFailures": [],
+  "invariantChecks": [
+    {
+      "name": "governor",
+      "passed": true,
+      "output": "Phase Lock Governor: PASS"
+    },
+    {
+      "name": "boundary:check",
+      "passed": true,
+      "output": "WARN  Unsupported engine: wanted: {\"node\":\">=22.16.0\"} (current: {\"node\":\"v20.19.5\",\"pnpm\":\"10.9.0\"})\n\n> magnus-procura@1.0.0 boundary:check /Users/chinyeosemene/Downloads/Magnus-Procura\n> depcruise --config governance/dependency-rules.js .\n\n\n✔ no dependency violations found (195 modules, 309 dependencies cruised)"
+    },
+    {
+      "name": "invariant:no-cdn",
+      "passed": true,
+      "output": "check-no-cdn: PASS"
+    },
+    {
+      "name": "invariant:strict-ts",
+      "passed": true,
+      "output": "check-strict-ts: PASS"
+    },
+    {
+      "name": "invariant:no-role-toggle",
+      "passed": true,
+      "output": "check-no-role-toggle: PASS"
+    },
+    {
+      "name": "invariant:env-validation",
+      "passed": true,
+      "output": "check-env-validation: PASS"
+    }
+  ],
+  "eligibleForProduction": "YES"
+}

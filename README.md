@@ -1,20 +1,38 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Magnus Procura
 
-# Run and deploy your AI Studio app
+Production-hardened procurement platform with strict TypeScript, secure API boundary, server-enforced RBAC, and invariant-gated CI.
 
-This contains everything you need to run your app locally.
+## Prerequisites
 
-View your app in AI Studio: https://ai.studio/apps/drive/1HEv7XfVUKX30zd1RZ5PZxy2EelA763-x
+- Node.js 22.16.0+
+- pnpm 10.9.0+
 
-## Run Locally
+## Setup
 
-**Prerequisites:**  Node.js
+1. Copy `.env.example` to `.env` and set real secrets.
+2. Install dependencies:
+   ```bash
+   pnpm install
+   ```
+3. Run API + client:
+   ```bash
+   pnpm dev
+   ```
 
+## Quality Gates
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```bash
+pnpm typecheck
+pnpm lint
+pnpm governor
+pnpm test
+pnpm build
+pnpm boundary:check
+```
+
+## Server Security Model
+
+- Provider SDK access is server-only.
+- Auth is cookie-based and server-verified.
+- RBAC is enforced on every protected API route.
+- Env validation is fail-closed at process startup.
