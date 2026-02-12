@@ -3,8 +3,11 @@ import { markJobCompleted, markJobFailed } from './idempotency.js';
 import { scoreWithMl } from './ml/index.js';
 import { runRuleEngine } from './rules/index.js';
 import type { DbClient, Logger, ScoringEvent, ScoringJobRecord, WorkerConfig } from './types.js';
+import { createDefaultPolicyEngine } from 'policy-engine';
 
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+
+const policyEngine = createDefaultPolicyEngine();
 
 const claimNextJob = async (db: DbClient, maxAttempts: number): Promise<ScoringJobRecord | null> => {
   const result = await db.query<ScoringJobRecord>(
@@ -77,6 +80,29 @@ export const processNextScoringJob = async (args: {
       eventType: event.eventType,
       payload: event.payload
     });
+
+    const policyReport = await policyEngine.evaluateAndPersist({
+      db: args.db,
+      logger: args.logger,
+      context: {
+        entityId: event.entityId,
+        supplierProfile: event.eventType === 'SUPPLIER_PROFILE_UPDATED' ? event.payload : {},
+        features: {
+          ...((ruleResult.featureValues as Record<string, unknown>) ?? {}),
+          ...(mlResult ? { mlFeatures: mlResult.features } : {})
+        },
+        credentials:
+          event.eventType === 'DOCUMENT_UPLOADED' ||
+          event.eventType === 'CREDENTIAL_EXPIRED' ||
+          event.eventType === 'EXTERNAL_SYNC_UPDATED'
+            ? (event.payload as Record<string, unknown>)
+            : {}
+      }
+    });
+
+    if (policyReport.overallStatus === 'FAIL') {
+      throw new Error('Policy compliance failed');
+    }
 
     const score = clamp(
       Math.round(ruleResult.baseScore + (mlResult?.scoreDelta ?? 0)),

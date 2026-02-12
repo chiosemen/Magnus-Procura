@@ -12,6 +12,7 @@
     { "path": "./packages/shared-utils" },
     { "path": "./packages/feature-store" },
     { "path": "./packages/network-syndication" },
+    { "path": "./packages/policy-engine" },
     { "path": "./packages/agent-core" },
     { "path": "./packages/agent-policies" },
     { "path": "./packages/agent-providers/openai" },

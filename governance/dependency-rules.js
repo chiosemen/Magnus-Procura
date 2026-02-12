@@ -30,6 +30,13 @@ const providerNoCrossImports = providerPackages.flatMap((provider) => {
 export default {
   forbidden: [
     {
+      name: 'only-api-and-scoring-can-import-policy-engine',
+      comment: 'Only apps/api and the scoring engine may import packages/policy-engine.',
+      severity: 'error',
+      from: { path: '^((apps/(?!api/).+)|(packages/(?!agent-tools/scoring/|scoring-engine/|policy-engine/).+))' },
+      to: { path: '^packages/policy-engine/' }
+    },
+    {
       name: 'only-api-can-import-network-syndication',
       comment: 'Only apps/api may import packages/network-syndication (outbound event emission is API-only).',
       severity: 'error',
