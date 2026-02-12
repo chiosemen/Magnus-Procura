@@ -1,0 +1,8 @@
+{
+  "name": "Magnus Procura",
+  "description": "A world-class procurement readiness platform connecting SMB suppliers with corporate buyers through AI-driven auditing and instant opportunity matching.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
