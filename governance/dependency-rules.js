@@ -30,6 +30,13 @@ const providerNoCrossImports = providerPackages.flatMap((provider) => {
 export default {
   forbidden: [
     {
+      name: 'only-core-can-import-feature-store',
+      comment: 'Only packages/scoring-engine and packages/policy-engine may import packages/feature-store.',
+      severity: 'error',
+      from: { path: '^((apps/)|(packages/(?!scoring-engine/|policy-engine/|feature-store/).+))' },
+      to: { path: '^packages/feature-store/' }
+    },
+    {
       name: 'no-web-to-agent-tools',
       comment: 'apps/web must never import packages/agent-tools directly.',
       severity: 'error',
@@ -110,4 +117,3 @@ export default {
     combinedDependencies: true
   }
 };
-

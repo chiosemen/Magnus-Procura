@@ -10,6 +10,7 @@
     { "path": "./apps/api" },
     { "path": "./packages/shared-types" },
     { "path": "./packages/shared-utils" },
+    { "path": "./packages/feature-store" },
     { "path": "./packages/agent-core" },
     { "path": "./packages/agent-policies" },
     { "path": "./packages/agent-providers/openai" },
