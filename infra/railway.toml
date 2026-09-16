@@ -1,0 +1,23 @@
+# Railway Multi-Service Deployment Config
+
+[build]
+builder = "NIXPACKS"
+
+[services.web]
+source = "apps/web"
+buildCommand = "pnpm --filter @magnus/web build"
+startCommand = "pnpm --filter @magnus/web start"
+
+[services.api]
+source = "apps/api"
+buildCommand = "pnpm --filter @magnus/api build"
+startCommand = "pnpm --filter @magnus/api start"
+healthcheckPath = "/health"
+healthcheckTimeout = 100
+
+[services.worker]
+source = "apps/api"
+buildCommand = "pnpm --filter @magnus/api build"
+startCommand = "pnpm --filter @magnus/api worker"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

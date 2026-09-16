@@ -1,0 +1,26 @@
+[
+  {
+    "name": "tick-sla",
+    "schedule": "0 6 * * *",
+    "path": "/jobs/tick-sla",
+    "description": "Daily 06:00 ET: no_response aging, pause unresponsive, email SLA risk at 50% behind"
+  },
+  {
+    "name": "tick-keep90",
+    "schedule": "15 6 * * *",
+    "path": "/jobs/tick-keep90",
+    "description": "Daily 06:15 ET: membership kept past refund window, bounty due"
+  },
+  {
+    "name": "tick-partners",
+    "schedule": "0 7 * * 1",
+    "path": "/jobs/tick-partners",
+    "description": "Weekly Monday 07:00 ET: partner activation check (<1 referral in 90d -> pause)"
+  },
+  {
+    "name": "tick-hours",
+    "schedule": "0 8 * * 1",
+    "path": "/jobs/tick-hours",
+    "description": "Weekly Monday 08:00 ET: email operator if >80% of 15h annual budget"
+  }
+]

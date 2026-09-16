@@ -1,3 +1,21 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Next.js Build Artifacts
+.next/
+out/
+
+# TypeScript Build Info & Dist
+dist
+dist-ssr
+*.tsbuildinfo
+
+# Environment Files
+.env
+.env*.local
+!.env.example
+
 # Logs
 logs
 *.log
@@ -7,16 +25,11 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
+# OS & Editor Files
+.DS_Store
 .vscode/*
 !.vscode/extensions.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj

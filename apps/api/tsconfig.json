@@ -3,11 +3,12 @@
     "target": "ES2022",
     "module": "ESNext",
     "lib": ["ES2022"],
-    "strict": true,
-    "skipLibCheck": true,
     "moduleResolution": "bundler",
-    "isolatedModules": true,
-    "noEmit": true
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true,
+    "outDir": "./dist"
   },
-  "exclude": ["node_modules", "dist", ".next"]
+  "include": ["src/**/*"]
 }
