@@ -4,13 +4,11 @@ import { useState } from 'react';
 import AdminHeader from '@/components/AdminHeader';
 import { 
   Users, 
-  AlertTriangle, 
   CheckCircle2, 
   Timer, 
   ShieldCheck, 
-  Plus, 
-  ArrowRight,
-  TrendingUp
+  TrendingUp,
+  AlertTriangle
 } from 'lucide-react';
 
 interface OperatorAccount {
@@ -58,9 +56,9 @@ const INITIAL_OPERATORS: OperatorAccount[] = [
       'Falcon Tactical Power',
       'Ceramic Armor Matrix',
       'Vanguard Propulsion Labs',
-      'IronClad Secure Hardware',
-      'Triton Marine Systems',
-      'Apex Subsea Tooling',
+      'Hyperion Guidance Systems',
+      'AeroPulse Composite Systems',
+      'Aegis Sensor Labs',
     ],
     maxCapacity: 15,
     totalHoursLogged: 52.0,
@@ -69,15 +67,15 @@ const INITIAL_OPERATORS: OperatorAccount[] = [
   {
     id: 'op_03',
     name: 'Amanda Miller',
-    email: 'a.miller@magnusprocura.com',
-    role: 'Staff Operator · Electronics & BioTech',
+    email: 'amanda.m@magnusprocura.com',
+    role: 'Staff Operator · Energy & Electronics',
     assignedOrgs: [
-      'MicroCell BioDiagnostics',
-      'Vector Cleanroom Assemblies',
-      'Silicon Precision Slices',
-      'CleanPower Inverters Inc',
-      'Nexus RF Components',
-      'BioSynthetics International',
+      'Voltaic Energy Cells',
+      'Beacon Microelectronics',
+      'Solaria Grid Hardware',
+      'Ionix Power Systems',
+      'GridMaster Inverters',
+      'CoreFlow Fluidic Valves',
     ],
     maxCapacity: 15,
     totalHoursLogged: 36.5,
@@ -88,82 +86,118 @@ const INITIAL_OPERATORS: OperatorAccount[] = [
 export default function AdminOperatorsPage() {
   const [operators] = useState<OperatorAccount[]>(INITIAL_OPERATORS);
 
+  const totalAssigned = operators.reduce((acc, o) => acc + o.assignedOrgs.length, 0);
+  const totalMax = operators.length * 15;
+  const platformUtilization = Math.round((totalAssigned / totalMax) * 100);
+
   return (
     <div>
       <AdminHeader 
-        title="Operator Capacity &amp; Allocation" 
-        subtitle="15-member hard capacity cap per operator, loaded COGS governance, and portfolio distribution."
+        title="Operator Capacity &amp; Load Balancer" 
+        subtitle="Enforcing the 15-member hard cap and 15h annual budget per supplier organization."
       />
 
       <main className="p-8 max-w-7xl mx-auto space-y-8">
-        {/* Capacity Warning Banner */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-2">
-          <div className="flex items-center space-x-2">
-            <ShieldCheck className="w-5 h-5 text-indigo-400" />
-            <h3 className="text-sm font-bold text-white">Capacity Invariant: Max 15 Live Members per Operator</h3>
+        {/* Capacity Governance Banner */}
+        <div className="liquid-glass specular-edge p-6 rounded-3xl border-blue-500/30 bg-blue-950/10 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="space-y-1">
+            <div className="inline-flex items-center space-x-2 text-blue-400 font-black text-[11px] uppercase tracking-wider">
+              <ShieldCheck className="w-4 h-4 text-blue-400" />
+              <span>Operational Invariant: Maximum 15 Members Per Operator</span>
+            </div>
+            <h3 className="text-lg font-black text-white">Preventing Broker Dilution &amp; Attention Exhaustion</h3>
+            <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
+              Traditional brokers assign 100+ accounts to single SDRs, guaranteeing automated generic spam. Magnus Procura enforces 
+              a database-governed hard limit of <strong className="text-blue-300">15 active organizations</strong> per human operator, 
+              ensuring bespoke outreach copy and rigorous compliance audits.
+            </p>
           </div>
-          <p className="text-xs text-slate-300 leading-relaxed max-w-4xl">
-            To preserve high introduction signal quality and ensure operators deliver 8 custom intros within the 15-hour annual budget, 
-            the system flags warnings when an operator reaches 12 members and prevents assignments beyond 15.
-          </p>
+          <div className="shrink-0 liquid-pill px-4 py-2 rounded-2xl text-xs font-mono font-bold text-blue-300 border-blue-500/30">
+            LOAD: {platformUtilization}% ({totalAssigned} / {totalMax} Seats)
+          </div>
         </div>
 
-        {/* Operator Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Operators Roster Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {operators.map((op) => {
             const count = op.assignedOrgs.length;
             const pct = Math.round((count / op.maxCapacity) * 100);
-            const isHigh = count >= 12;
+            const isNearCap = pct >= 80;
 
             return (
-              <div key={op.id} className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col justify-between space-y-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+              <div 
+                key={op.id}
+                className="liquid-glass-interactive specular-edge p-6 rounded-3xl flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-start justify-between">
                     <div>
-                      <h4 className="text-base font-black text-white">{op.name}</h4>
-                      <p className="text-xs text-slate-400 mt-0.5">{op.role}</p>
+                      <h3 className="text-base font-black text-white">{op.name}</h3>
+                      <p className="text-xs text-purple-300 font-medium mt-0.5">{op.role}</p>
+                      <span className="text-[11px] text-slate-400 font-mono block mt-1">{op.email}</span>
                     </div>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase font-mono ${
-                      isHigh ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'
-                    }`}>
-                      {count} / {op.maxCapacity} Max
+                    <span className="liquid-pill px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold text-slate-300">
+                      {count} / {op.maxCapacity}
                     </span>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between text-[11px] text-slate-400">
-                      <span>Book Load</span>
-                      <span className="font-mono font-bold text-white">{pct}%</span>
+                  {/* Liquid Load Bar */}
+                  <div className="mt-5">
+                    <div className="flex items-center justify-between text-xs font-bold mb-1.5">
+                      <span className="text-slate-400">Assigned Capacity:</span>
+                      <span className={`font-mono ${isNearCap ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {pct}% ({op.maxCapacity - count} seats open)
+                      </span>
                     </div>
-                    <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                    <div className="w-full bg-black/40 rounded-full h-2.5 overflow-hidden p-0.5 border border-white/10">
                       <div 
-                        className={`h-full ${isHigh ? 'bg-amber-500' : 'bg-indigo-500'}`} 
-                        style={{ width: `${pct}%` }} 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isNearCap 
+                            ? 'bg-gradient-to-r from-amber-500 to-rose-500 shadow-[0_0_8px_#f43f5e]' 
+                            : 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_8px_#10b981]'
+                        }`}
+                        style={{ width: `${pct}%` }}
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs pt-2">
-                    <div className="p-3 bg-slate-950 rounded-xl border border-slate-800/80">
-                      <span className="text-[10px] text-slate-400 uppercase font-mono block">Total Hours</span>
-                      <strong className="text-sm font-black text-white font-mono mt-0.5 block">{op.totalHoursLogged}h</strong>
+                  {/* Hours Tracking Stats */}
+                  <div className="grid grid-cols-2 gap-3 mt-5 font-mono text-xs">
+                    <div className="liquid-pill p-3 rounded-2xl">
+                      <span className="text-slate-400 text-[10px] uppercase block font-sans">Total Hours Logged</span>
+                      <strong className="text-base text-white block mt-1">{op.totalHoursLogged}h</strong>
                     </div>
-                    <div className="p-3 bg-slate-950 rounded-xl border border-slate-800/80">
-                      <span className="text-[10px] text-slate-400 uppercase font-mono block">Avg / Member</span>
-                      <strong className="text-sm font-black text-indigo-400 font-mono mt-0.5 block">{op.avgHoursPerMember}h</strong>
+                    <div className="liquid-pill p-3 rounded-2xl">
+                      <span className="text-slate-400 text-[10px] uppercase block font-sans">Avg Per Member</span>
+                      <strong className="text-base text-emerald-400 block mt-1">{op.avgHoursPerMember}h / 15h</strong>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="text-[10px] uppercase font-bold text-slate-400 block mb-2">Assigned Portfolio ({count})</label>
-                    <div className="max-h-40 overflow-y-auto space-y-1 pr-1 text-xs">
-                      {op.assignedOrgs.map((org, i) => (
-                        <div key={i} className="p-2 bg-slate-950 rounded-lg text-slate-300 font-medium truncate">
-                          {org}
+                  {/* Active Portfolio Roster */}
+                  <div className="mt-5">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                      Assigned Member Portfolio:
+                    </span>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      {op.assignedOrgs.map((org) => (
+                        <div 
+                          key={org}
+                          className="liquid-pill px-3 py-1.5 rounded-xl text-xs text-slate-300 truncate flex items-center justify-between"
+                        >
+                          <span className="truncate">{org}</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 ml-2 shadow-[0_0_6px_#34d399]" />
                         </div>
                       ))}
                     </div>
                   </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs">
+                  <span className="text-emerald-400 font-bold flex items-center space-x-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>SLA On-Track</span>
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-mono">15h Budget Enforced</span>
                 </div>
               </div>
             );

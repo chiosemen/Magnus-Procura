@@ -5,13 +5,12 @@ import AdminHeader from '@/components/AdminHeader';
 import { 
   ScrollText, 
   Search, 
-  Filter, 
-  CheckCircle2, 
-  Clock, 
-  DollarSign, 
-  Send, 
+  Code,
   ShieldCheck,
-  Code
+  CheckCircle2,
+  DollarSign,
+  Send,
+  Timer
 } from 'lucide-react';
 
 interface AuditLogEntry {
@@ -58,8 +57,8 @@ const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
     action: 'tick-keep90.executed',
     entityType: 'system_cron',
     entityId: 'worker_keep90',
-    actor: 'railway.cron',
-    meta: { activeProgramsAudited: 25, bountiesActivated: 1, bountiesReleasedTotalCents: 50000 },
+    actor: 'railway.worker',
+    meta: { bountiesEnqueued: 2, refundWindowsClosed: 1 },
   },
   {
     id: 'aud_105',
@@ -67,157 +66,142 @@ const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
     action: 'tick-sla.executed',
     entityType: 'system_cron',
     entityId: 'worker_sla',
-    actor: 'railway.cron',
-    meta: { programsAudited: 25, introsAged: 2, delinquencyAlertsSent: 0 },
+    actor: 'railway.worker',
+    meta: { programsEvaluated: 48, agedIntrosCount: 0, warningsSent: 0 },
   },
   {
     id: 'aud_106',
     createdAt: '2026-09-15T16:30:12Z',
-    action: 'resend.email.suppressed',
-    entityType: 'people',
-    entityId: 'bad-lead@company.com',
-    actor: 'resend.webhook',
-    meta: { reason: 'email.bounced', doNotContactUntil: '2099-12-31' },
+    action: 'packet.status.changed',
+    entityType: 'packet',
+    entityId: 'pkt_apex_01',
+    actor: 'sarah.c@magnusprocura.com',
+    meta: { oldStatus: 'blocked', newStatus: 'ready', reason: 'COI & NAICS approved' },
   },
 ];
 
 export default function AdminAuditLogPage() {
   const [logs] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOGS);
-  const [filterAction, setFilterAction] = useState<string>('all');
   const [search, setSearch] = useState('');
-  const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
+  const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(INITIAL_AUDIT_LOGS[0]);
 
-  const filteredLogs = logs.filter((l) => {
-    const matchesFilter = filterAction === 'all' || l.action.startsWith(filterAction);
-    const matchesSearch = l.action.toLowerCase().includes(search.toLowerCase()) ||
-      l.entityId.toLowerCase().includes(search.toLowerCase()) ||
-      l.actor.toLowerCase().includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
+  const filteredLogs = logs.filter(
+    (l) =>
+      l.action.toLowerCase().includes(search.toLowerCase()) ||
+      l.actor.toLowerCase().includes(search.toLowerCase()) ||
+      l.entityId.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div>
       <AdminHeader 
-        title="Privileged System Audit Trail" 
-        subtitle="Append-only immutable record from public.audit_log covering billing, dispatches, crons, and suppressions."
+        title="Privileged Audit Log Stream" 
+        subtitle="Forensic immutable event log from public.audit_log (Admin-Only RLS Enforced)."
       />
 
-      <main className="p-8 max-w-7xl mx-auto space-y-8">
-        {/* Search & Action Filters */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="relative w-full md:w-80">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search audit actions, entity IDs, or actors..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
+      <main className="p-8 max-w-7xl mx-auto space-y-6">
+        {/* Compliance Header Card */}
+        <div className="liquid-glass specular-edge p-6 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4">
+          <div>
+            <span className="liquid-pill px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider text-purple-300 border-purple-500/30 flex items-center space-x-1.5 w-fit">
+              <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+              <span>SOC 2 Type II / ISO-27001 Audit Ready</span>
+            </span>
+            <h2 className="text-base font-black text-white mt-2">Append-Only Immutable Event Stream</h2>
+            <p className="text-xs text-slate-300 mt-0.5">
+              All financial transactions, intro approvals, and automated background cron tasks are cryptographically stamped.
+            </p>
+          </div>
 
-            <div className="flex rounded-xl border border-slate-800 p-1 bg-slate-950 text-xs font-bold w-full md:w-auto overflow-x-auto">
-              {['all', 'billing', 'intro', 'attestation', 'tick', 'resend'].map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setFilterAction(cat)}
-                  className={`px-3 py-1.5 rounded-lg transition uppercase text-[10px] tracking-wider ${
-                    filterAction === cat ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
+          <div className="relative w-full md:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search action, actor, ID..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="liquid-pill w-full pl-9 pr-4 py-2 text-xs rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-400/50"
+            />
           </div>
         </div>
 
-        {/* Audit Log Table & Metadata Inspector */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white">Event Log ({filteredLogs.length} Events)</h3>
-              <span className="text-[10px] text-slate-400 font-mono">Immutable append-only</span>
-            </div>
+        {/* Master-Detail Split View */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Events Stream List */}
+          <div className="lg:col-span-7 space-y-2.5 max-h-[600px] overflow-y-auto pr-1">
+            {filteredLogs.map((log) => {
+              const isSelected = selectedLog?.id === log.id;
+              return (
+                <div
+                  key={log.id}
+                  onClick={() => setSelectedLog(log)}
+                  className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 liquid-glass-interactive ${
+                    isSelected
+                      ? 'border-purple-500/60 bg-white/[0.08] shadow-[0_0_30px_-5px_rgba(168,85,247,0.3)]'
+                      : 'border-white/10 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="font-mono font-bold text-purple-300 flex items-center space-x-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_6px_#c084fc]" />
+                      <span>{log.action}</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {new Date(log.createdAt).toLocaleTimeString()}
+                    </span>
+                  </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
-                  <tr>
-                    <th className="px-6 py-3.5">Timestamp</th>
-                    <th className="px-6 py-3.5">Action</th>
-                    <th className="px-6 py-3.5">Entity</th>
-                    <th className="px-6 py-3.5">Actor</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {filteredLogs.map((log) => (
-                    <tr 
-                      key={log.id} 
-                      onClick={() => setSelectedLog(log)}
-                      className={`hover:bg-slate-800/40 cursor-pointer transition ${
-                        selectedLog?.id === log.id ? 'bg-purple-950/20' : ''
-                      }`}
-                    >
-                      <td className="px-6 py-3.5 font-mono text-slate-400 text-[11px]">
-                        {new Date(log.createdAt).toLocaleTimeString()}
-                      </td>
-
-                      <td className="px-6 py-3.5">
-                        <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-slate-950 border border-slate-800 text-purple-300">
-                          {log.action}
-                        </span>
-                      </td>
-
-                      <td className="px-6 py-3.5 font-mono text-slate-300">
-                        {log.entityType}:{log.entityId}
-                      </td>
-
-                      <td className="px-6 py-3.5 text-slate-400 font-mono text-[11px]">
-                        {log.actor}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span className="font-mono text-slate-300">Target: {log.entityId}</span>
+                    <span className="font-sans text-slate-400">Actor: {log.actor}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
-          {/* JSON Metadata Inspector */}
-          <div className="lg:col-span-1 bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4">
-            <div className="flex items-center space-x-2 pb-4 border-b border-slate-800">
-              <Code className="w-4 h-4 text-purple-400" />
-              <h3 className="text-sm font-bold text-white">Payload Inspector</h3>
+          {/* Forensic JSON Payload Inspector */}
+          <div className="lg:col-span-5 liquid-glass specular-edge p-6 rounded-3xl flex flex-col">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div className="flex items-center space-x-2">
+                <Code className="w-4 h-4 text-purple-400" />
+                <h3 className="text-xs font-black text-white uppercase tracking-wider">Payload Inspector</h3>
+              </div>
+              {selectedLog && (
+                <span className="liquid-pill px-2.5 py-0.5 rounded-full font-mono text-[10px] text-slate-400">
+                  {selectedLog.id}
+                </span>
+              )}
             </div>
 
             {selectedLog ? (
-              <div className="space-y-4 text-xs">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Event ID</span>
-                  <p className="font-mono text-white font-bold">{selectedLog.id}</p>
+              <div className="mt-4 flex-1 flex flex-col">
+                <div className="space-y-2 mb-4 text-xs font-mono">
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <span className="text-slate-400">Timestamp:</span>
+                    <span className="text-white">{selectedLog.createdAt}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <span className="text-slate-400">Action:</span>
+                    <span className="text-purple-300 font-bold">{selectedLog.action}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <span className="text-slate-400">Entity Type:</span>
+                    <span className="text-white">{selectedLog.entityType}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <span className="text-slate-400">Actor:</span>
+                    <span className="text-white">{selectedLog.actor}</span>
+                  </div>
                 </div>
 
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Action &amp; Target</span>
-                  <p className="font-mono text-purple-300">{selectedLog.action} &rarr; {selectedLog.entityType}:{selectedLog.entityId}</p>
-                </div>
-
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Exact Timestamp</span>
-                  <p className="font-mono text-slate-300">{selectedLog.createdAt}</p>
-                </div>
-
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Metadata (JSONB)</span>
-                  <pre className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 text-emerald-400 font-mono text-[11px] overflow-x-auto whitespace-pre-wrap">
-                    {JSON.stringify(selectedLog.meta, null, 2)}
-                  </pre>
+                <div className="flex-1 liquid-pill p-4 rounded-2xl overflow-x-auto font-mono text-[11px] text-emerald-300 bg-black/50 border border-white/10">
+                  <pre>{JSON.stringify(selectedLog.meta, null, 2)}</pre>
                 </div>
               </div>
             ) : (
-              <div className="text-center py-16 text-slate-500 text-xs">
-                Select an event row to inspect full JSON payload and audit context.
+              <div className="py-20 text-center text-xs text-slate-500">
+                Select an audit entry to inspect forensic metadata.
               </div>
             )}
           </div>

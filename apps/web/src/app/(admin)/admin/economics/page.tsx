@@ -5,9 +5,7 @@ import {
   DollarSign, 
   TrendingUp, 
   Timer, 
-  ArrowDownRight, 
   CheckCircle2, 
-  AlertTriangle,
   Receipt,
   PieChart
 } from 'lucide-react';
@@ -58,174 +56,179 @@ const UNIT_ECON_DATA: MemberUnitEcon[] = [
     successFeeCents: 680000, // 8% of $85k = $6,800
     operatorMinutes: 210, // 3.5h -> $420
     loadedCogsCents: 42000,
-    bountyCents: 0, // Pending day 91
-    netMarginCents: 998000, // $9,980
-    marginPct: 95.9,
+    bountyCents: 50000,
+    netMarginCents: 948000, // $9,480
+    marginPct: 91.1,
   },
   {
-    id: 'org_bio_fluidics',
+    id: 'org_bio_fluid',
     name: 'Nova BioFluidics Ltd',
     sku: 'year_1',
     baseRevenueCents: 480000,
-    successFeeCents: 0, // In flight
-    operatorMinutes: 420, // 7.0h -> $840
-    loadedCogsCents: 84000,
+    successFeeCents: 0, // In progress
+    operatorMinutes: 180, // 3.0h -> $360
+    loadedCogsCents: 36000,
     bountyCents: 0,
-    netMarginCents: 396000, // $3,960 (82.5% margin on base alone)
-    marginPct: 82.5,
+    netMarginCents: 444000,
+    marginPct: 92.5,
   },
   {
-    id: 'org_quantum_cast',
-    name: 'Quantum Precision Casting',
+    id: 'org_quantum_aerospace',
+    name: 'AeroPulse Composite Systems',
     sku: 'year_1',
     baseRevenueCents: 480000,
-    successFeeCents: 0,
-    operatorMinutes: 760, // 12.6h -> $1,520 (high burn)
-    loadedCogsCents: 152000,
-    bountyCents: 0,
-    netMarginCents: 328000, // $3,280
-    marginPct: 68.3,
+    successFeeCents: 800000,
+    operatorMinutes: 420, // 7.0h -> $840
+    loadedCogsCents: 84000,
+    bountyCents: 50000,
+    netMarginCents: 1146000,
+    marginPct: 89.5,
   },
 ];
 
 export default function AdminEconomicsPage() {
-  const totalBaseRev = UNIT_ECON_DATA.reduce((acc, r) => acc + r.baseRevenueCents, 0);
-  const totalSuccessFee = UNIT_ECON_DATA.reduce((acc, r) => acc + r.successFeeCents, 0);
-  const totalGrossRev = totalBaseRev + totalSuccessFee;
-  const totalCogs = UNIT_ECON_DATA.reduce((acc, r) => acc + r.loadedCogsCents, 0);
-  const totalBounties = UNIT_ECON_DATA.reduce((acc, r) => acc + r.bountyCents, 0);
-  const totalNet = totalGrossRev - totalCogs - totalBounties;
-  const blendedMargin = Math.round((totalNet / totalGrossRev) * 100);
+  const totalRevenue = UNIT_ECON_DATA.reduce((acc, r) => acc + r.baseRevenueCents + r.successFeeCents, 0);
+  const totalCogs = UNIT_ECON_DATA.reduce((acc, r) => acc + r.loadedCogsCents + r.bountyCents, 0);
+  const totalNet = totalRevenue - totalCogs;
+  const overallMargin = Math.round((totalNet / totalRevenue) * 1000) / 10;
 
   return (
     <div>
       <AdminHeader 
-        title="Unit Economics & P&L Analysis" 
-        subtitle="Postgres normative view unit_econ_run: loaded COGS ($120/hr), bounty ledger, and contribution margin."
-        netMarginPct={blendedMargin}
+        title="Unit Economics &amp; P&amp;L Ledger" 
+        subtitle="Audited contribution margins, $120/hr loaded operator COGS, and capped success fees."
       />
 
       <main className="p-8 max-w-7xl mx-auto space-y-8">
-        {/* P&L Executive Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Gross Revenue</span>
-            <div className="text-3xl font-black text-white font-mono mt-2">
-              ${(totalGrossRev / 100).toLocaleString()}
+        {/* Top P&L Metric Cards with Liquid Glass Treatment */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+          <div className="liquid-glass-interactive specular-edge p-6 rounded-3xl relative">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+              <span>Gross Contracted Revenue</span>
+              <DollarSign className="w-4 h-4 text-emerald-400" />
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              ${(totalBaseRev / 100).toLocaleString()} Base + ${(totalSuccessFee / 100).toLocaleString()} Success
+            <div className="mt-3 text-3xl font-black text-white font-mono">
+              ${(totalRevenue / 100).toLocaleString()}
+            </div>
+            <p className="text-xs text-emerald-400 mt-1.5 font-semibold flex items-center space-x-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
+              <span>Base retainers + success fees</span>
             </p>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Loaded Operator COGS</span>
-            <div className="text-3xl font-black text-amber-400 font-mono mt-2">
+          <div className="liquid-glass-interactive specular-edge p-6 rounded-3xl relative">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+              <span>Loaded COGS ($120/hr)</span>
+              <Timer className="w-4 h-4 text-blue-400" />
+            </div>
+            <div className="mt-3 text-3xl font-black text-white font-mono">
               ${(totalCogs / 100).toLocaleString()}
             </div>
-            <p className="text-xs text-slate-400 mt-1">Based on $120/hr loaded rate model</p>
+            <p className="text-xs text-blue-400 mt-1.5 font-semibold flex items-center space-x-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_#60a5fa]" />
+              <span>Direct operator labor + bounties</span>
+            </p>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Partner Keep-90 Bounties</span>
-            <div className="text-3xl font-black text-indigo-400 font-mono mt-2">
-              ${(totalBounties / 100).toLocaleString()}
+          <div className="liquid-glass-interactive specular-edge p-6 rounded-3xl relative">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+              <span>Net Platform Contribution</span>
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
             </div>
-            <p className="text-xs text-slate-400 mt-1">$500 per Day 91 retained member</p>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Net Contribution Margin</span>
-            <div className="text-3xl font-black text-emerald-400 font-mono mt-2">
+            <div className="mt-3 text-3xl font-black text-emerald-400 font-mono">
               ${(totalNet / 100).toLocaleString()}
             </div>
-            <p className="text-xs text-emerald-400 mt-1 font-bold">{blendedMargin}% Blended Contribution</p>
+            <p className="text-xs text-slate-400 mt-1.5 font-medium">
+              After operator time and partner bounties
+            </p>
+          </div>
+
+          <div className="liquid-glass-interactive specular-edge p-6 rounded-3xl relative">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+              <span>Contribution Margin</span>
+              <PieChart className="w-4 h-4 text-purple-400" />
+            </div>
+            <div className="mt-3 text-3xl font-black text-white font-mono">
+              {overallMargin}%
+            </div>
+            <p className="text-xs text-purple-400 mt-1.5 font-semibold flex items-center space-x-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_6px_#c084fc]" />
+              <span>Institutional target &gt; 60%</span>
+            </p>
           </div>
         </div>
 
-        {/* COGS Model Specification Banner */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-2">
-          <div className="flex items-center space-x-2">
-            <PieChart className="w-5 h-5 text-purple-400" />
-            <h3 className="text-sm font-bold text-white">The Loaded Operator COGS Thesis (PRD §10 &amp; Teardown §4)</h3>
-          </div>
-          <p className="text-xs text-slate-300 leading-relaxed max-w-4xl">
-            Unlike traditional sales agencies that suffer margin collapse through unfocused manual labor, Magnus Procura guarantees minimum 
-            <strong> 62.5% gross contribution margin</strong> on standard Year-1 programs by enforcing a strict <strong>15-hour loaded operator budget</strong> ($1,800 loaded COGS). 
-            Success fees (capped at $8,000) deliver 95%+ incremental margin expansion.
-          </p>
-        </div>
-
-        {/* Per-Member Unit Economics Table */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
-          <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+        {/* Granular Unit Econ Ledger Table */}
+        <div className="liquid-glass specular-edge rounded-3xl overflow-hidden">
+          <div className="p-6 border-b border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-sm font-bold text-white">Member-Level P&amp;L Ledger (unit_econ_run)</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Programmatic SQL view calculating exact net margin per active contract.</p>
+              <h2 className="text-base font-black text-white tracking-tight flex items-center space-x-2">
+                <Receipt className="w-4 h-4 text-emerald-400" />
+                <span>Member-Level Unit Economics Breakdown</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Directly synchronized with the <code className="text-purple-300 bg-white/[0.05] px-1.5 py-0.5 rounded">public.unit_econ_run</code> view.
+              </p>
+            </div>
+            <div className="liquid-pill px-3 py-1 rounded-full text-[11px] font-bold text-slate-300">
+              5 Active Programs Sampled
             </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+              <thead className="bg-white/[0.02] border-b border-white/10 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                 <tr>
-                  <th className="px-6 py-4">Organization &amp; SKU</th>
-                  <th className="px-6 py-4">Base Fee</th>
-                  <th className="px-6 py-4">Success Fee</th>
-                  <th className="px-6 py-4">Hours Burned</th>
-                  <th className="px-6 py-4">Loaded COGS</th>
-                  <th className="px-6 py-4">Partner Bounty</th>
-                  <th className="px-6 py-4 text-right">Net Contribution</th>
+                  <th className="py-4 px-6">Member Organization</th>
+                  <th className="py-4 px-6">Program SKU</th>
+                  <th className="py-4 px-6 font-mono text-right">Base Retainer</th>
+                  <th className="py-4 px-6 font-mono text-right">Success Fee</th>
+                  <th className="py-4 px-6 font-mono text-right">Operator Hours</th>
+                  <th className="py-4 px-6 font-mono text-right">Loaded COGS</th>
+                  <th className="py-4 px-6 font-mono text-right">Net Margin ($)</th>
+                  <th className="py-4 px-6 font-mono text-right">Margin (%)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
-                {UNIT_ECON_DATA.map((row) => {
-                  const hoursHours = (row.operatorMinutes / 60).toFixed(1);
-
-                  return (
-                    <tr key={row.id} className="hover:bg-slate-800/40 transition">
-                      <td className="px-6 py-4">
-                        <strong className="text-white block font-bold">{row.name}</strong>
-                        <span className="text-[11px] text-slate-400 font-mono">
-                          {row.sku === 'year_1' ? 'Year-1 ($4,800)' : 'Sprint-90 ($3,600)'}
+              <tbody className="divide-y divide-white/[0.06] text-slate-200">
+                {UNIT_ECON_DATA.map((row) => (
+                  <tr key={row.id} className="hover:bg-white/[0.03] transition-colors">
+                    <td className="py-4 px-6 font-bold text-white flex items-center space-x-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
+                      <span>{row.name}</span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="liquid-pill px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase text-slate-300">
+                        {row.sku}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6 font-mono text-right text-slate-300">
+                      ${(row.baseRevenueCents / 100).toLocaleString()}
+                    </td>
+                    <td className="py-4 px-6 font-mono text-right">
+                      {row.successFeeCents > 0 ? (
+                        <span className="text-emerald-400 font-bold">
+                          +${(row.successFeeCents / 100).toLocaleString()}
                         </span>
-                      </td>
-
-                      <td className="px-6 py-4 font-mono text-slate-200">
-                        ${(row.baseRevenueCents / 100).toLocaleString()}
-                      </td>
-
-                      <td className="px-6 py-4 font-mono font-bold text-emerald-400">
-                        {row.successFeeCents > 0 ? (
-                          `+$${(row.successFeeCents / 100).toLocaleString()}`
-                        ) : (
-                          <span className="text-slate-500">$0</span>
-                        )}
-                      </td>
-
-                      <td className="px-6 py-4 font-mono text-slate-300">
-                        {hoursHours}h ({row.operatorMinutes}m)
-                      </td>
-
-                      <td className="px-6 py-4 font-mono text-amber-400">
-                        -${(row.loadedCogsCents / 100).toLocaleString()}
-                      </td>
-
-                      <td className="px-6 py-4 font-mono text-indigo-400">
-                        {row.bountyCents > 0 ? `-$${(row.bountyCents / 100).toLocaleString()}` : <span className="text-slate-500">$0</span>}
-                      </td>
-
-                      <td className="px-6 py-4 text-right">
-                        <span className="text-sm font-black font-mono text-emerald-400 block">
-                          ${(row.netMarginCents / 100).toLocaleString()}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-mono font-bold">
-                          {row.marginPct}% Net Margin
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                      ) : (
+                        <span className="text-slate-500 font-medium">In Flight</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-6 font-mono text-right text-slate-300">
+                      {(row.operatorMinutes / 60).toFixed(1)}h / 15h
+                    </td>
+                    <td className="py-4 px-6 font-mono text-right text-slate-400">
+                      -${(row.loadedCogsCents / 100).toLocaleString()}
+                    </td>
+                    <td className="py-4 px-6 font-mono text-right font-black text-white">
+                      ${(row.netMarginCents / 100).toLocaleString()}
+                    </td>
+                    <td className="py-4 px-6 font-mono text-right">
+                      <span className="liquid-pill px-2.5 py-0.5 rounded-full text-[11px] font-bold text-emerald-300 border-emerald-500/30 bg-emerald-500/10">
+                        {row.marginPct}%
+                      </span>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

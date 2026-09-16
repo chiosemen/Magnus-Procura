@@ -14,7 +14,8 @@ import {
   Activity, 
   ScrollText,
   ShieldCheck,
-  Building2
+  Building2,
+  Sparkles
 } from 'lucide-react';
 
 export default function AdminExecutiveDashboardPage() {
@@ -40,187 +41,174 @@ export default function AdminExecutiveDashboardPage() {
       />
 
       <main className="p-8 max-w-7xl mx-auto space-y-8">
-        {/* Top Executive Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xs">
+        {/* Top Executive Metrics with Liquid Glass Treatment */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+          <div className="liquid-glass-interactive specular-edge p-6 rounded-3xl relative">
             <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
               <span>Attested PO Volume</span>
               <Building2 className="w-4 h-4 text-emerald-400" />
             </div>
             <div className="mt-3 text-3xl font-black text-white font-mono">$1,450,000</div>
-            <p className="text-xs text-emerald-400 mt-1 font-medium flex items-center space-x-1">
-              <TrendingUp className="w-3.5 h-3.5" />
+            <p className="text-xs text-emerald-400 mt-1.5 font-semibold flex items-center space-x-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
               <span>Verified subcontracts won</span>
             </p>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xs">
+          <div className="liquid-glass-interactive specular-edge p-6 rounded-3xl relative">
             <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
-              <span>Platform Revenue</span>
+              <span>Contracted Platform Fees</span>
               <DollarSign className="w-4 h-4 text-blue-400" />
             </div>
-            <div className="mt-3 text-3xl font-black text-white font-mono">$118,400</div>
-            <p className="text-xs text-slate-400 mt-1">$50.4k Membership + $68k Success Fees</p>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xs">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
-              <span>Loaded Contribution Margin</span>
-              <Activity className="w-4 h-4 text-purple-400" />
-            </div>
-            <div className="mt-3 text-3xl font-black text-purple-400 font-mono">62.5%</div>
-            <p className="text-xs text-slate-400 mt-1">Net of $120/hr loaded operator COGS</p>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xs">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
-              <span>Live Member Orgs</span>
-              <Users className="w-4 h-4 text-indigo-400" />
-            </div>
-            <div className="mt-3 text-3xl font-black text-white">25 Active</div>
-            <p className="text-xs text-slate-400 mt-1">Across 3 Assigned Operators</p>
-          </div>
-        </div>
-
-        {/* Financial & Economic Health Card */}
-        <div className="bg-gradient-to-r from-purple-950/40 via-slate-900 to-slate-900 border border-purple-800/40 p-6 rounded-3xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-          <div className="space-y-1">
-            <div className="flex items-center space-x-2">
-              <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                P&amp;L Discipline (unit_econ_run)
-              </span>
-              <h3 className="text-base font-bold text-white">Target Unit Economics Verified</h3>
-            </div>
-            <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-              Every $4,800 Year-1 contract delivers <strong>$3,000 Net Contribution Margin</strong> after factoring the strict 15-hour loaded operator budget ($1,800 loaded COGS). 
-              Success fees provide pure margin expansion capped at $8,000 per member.
+            <div className="mt-3 text-3xl font-black text-white font-mono">$384,000</div>
+            <p className="text-xs text-blue-400 mt-1.5 font-semibold flex items-center space-x-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_#60a5fa]" />
+              <span>Base + capped success fees</span>
             </p>
           </div>
-          <Link
-            href="/admin/economics"
-            className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition flex items-center space-x-2 shadow-lg shadow-purple-600/20"
-          >
-            <span>Open P&amp;L Analysis</span>
-            <ArrowUpRight className="w-4 h-4" />
-          </Link>
+
+          <div className="liquid-glass-interactive specular-edge p-6 rounded-3xl relative">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+              <span>Net Contribution Margin</span>
+              <Activity className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div className="mt-3 text-3xl font-black text-emerald-400 font-mono">62.5%</div>
+            <p className="text-xs text-slate-400 mt-1.5 font-medium">
+              After $120/hr operator loaded COGS
+            </p>
+          </div>
+
+          <div className="liquid-glass-interactive specular-edge p-6 rounded-3xl relative">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+              <span>Active Cohorts</span>
+              <Layers className="w-4 h-4 text-purple-400" />
+            </div>
+            <div className="mt-3 text-3xl font-black text-white font-mono">4 Cohorts</div>
+            <p className="text-xs text-purple-400 mt-1.5 font-semibold flex items-center space-x-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_6px_#c084fc]" />
+              <span>2 Published (n ≥ 10 gated)</span>
+            </p>
+          </div>
         </div>
 
-        {/* Two-Column Grid: Operator Capacities & Cohort Publications */}
+        {/* Operational Split: Operator Capacity & Live Audit Stream */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Operator Capacity Gauge */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-              <div className="flex items-center space-x-2">
-                <Users className="w-4 h-4 text-indigo-400" />
-                <h3 className="text-sm font-bold text-white">Operator Capacity &amp; Book Load</h3>
+          {/* Operator Capacity Balancer */}
+          <div className="liquid-glass specular-edge p-6 rounded-3xl">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div>
+                <h2 className="text-base font-black text-white tracking-tight flex items-center space-x-2">
+                  <Users className="w-4 h-4 text-blue-400" />
+                  <span>Operator Workload &amp; Capacity</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">Enforcing 15-member hard cap per human operator</p>
               </div>
-              <span className="text-xs text-slate-400 font-mono">15 Member Max Invariant</span>
+              <Link 
+                href="/admin/operators"
+                className="liquid-pill px-3 py-1.5 rounded-xl text-xs font-bold text-blue-400 hover:text-white flex items-center space-x-1 transition"
+              >
+                <span>Manage</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
 
-            <div className="space-y-4">
-              {operators.map((op, idx) => (
-                <div key={idx} className="bg-slate-950 p-4 rounded-2xl border border-slate-800/80 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
+            <div className="mt-5 space-y-4">
+              {operators.map((op) => (
+                <div key={op.name} className="liquid-glass-interactive p-4 rounded-2xl">
+                  <div className="flex items-center justify-between text-xs mb-2">
                     <div>
-                      <strong className="text-white block">{op.name}</strong>
-                      <span className="text-[11px] text-slate-400">{op.role} · {op.hoursLogged}h logged</span>
+                      <span className="font-black text-white">{op.name}</span>
+                      <span className="text-[11px] text-slate-400 ml-2 font-medium">({op.role})</span>
                     </div>
-                    <span className="font-mono font-bold text-slate-200">
-                      {op.assigned} / {op.max} ({op.pct}%)
+                    <span className="font-mono text-xs font-bold text-slate-300">
+                      {op.assigned} / {op.max} Orgs ({op.pct}%)
                     </span>
                   </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+
+                  {/* Liquid Progress Bar */}
+                  <div className="w-full bg-black/40 rounded-full h-2.5 overflow-hidden p-0.5 border border-white/10">
                     <div 
-                      className={`h-full ${op.pct >= 80 ? 'bg-amber-500' : 'bg-indigo-500'}`}
+                      className={`h-full rounded-full transition-all duration-500 shadow-sm ${
+                        op.pct > 80 
+                          ? 'bg-gradient-to-r from-amber-500 to-rose-500 shadow-[0_0_8px_#f43f5e]' 
+                          : 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_8px_#10b981]'
+                      }`}
                       style={{ width: `${op.pct}%` }}
                     />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 font-mono">
+                    <span>Hours Logged: <strong className="text-white">{op.hoursLogged}h</strong></span>
+                    <span className="text-emerald-400 font-sans font-bold flex items-center space-x-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                      <span>SLA Healthy</span>
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
-
-            <div className="text-right">
-              <Link href="/admin/operators" className="text-xs text-indigo-400 font-bold hover:underline">
-                Manage Operator Allocations &rarr;
-              </Link>
-            </div>
           </div>
 
-          {/* Cohort Governance Card */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-              <div className="flex items-center space-x-2">
-                <Layers className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-sm font-bold text-white">Cohort Publication Governance</h3>
+          {/* Live Forensic Audit Log Snapshot */}
+          <div className="liquid-glass specular-edge p-6 rounded-3xl">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div>
+                <h2 className="text-base font-black text-white tracking-tight flex items-center space-x-2">
+                  <ScrollText className="w-4 h-4 text-purple-400" />
+                  <span>Real-Time Audit Feed</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">Streaming privileged actions from public.audit_log</p>
               </div>
-              <span className="text-xs text-emerald-400 font-mono">cohort_card SQL view</span>
-            </div>
-
-            <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800/80 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-bold text-white">Cohort 1 (Summer 2026)</h4>
-                  <span className="text-[11px] text-slate-400">14 Member Suppliers ($n \ge 10$ Threshold Met)</span>
-                </div>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  Published Live
-                </span>
-              </div>
-
-              <div className="grid grid-cols-4 gap-2 text-center text-xs pt-2 border-t border-slate-800">
-                <div className="p-2 bg-slate-900 rounded-lg">
-                  <span className="text-[10px] text-slate-400 uppercase block">Sent</span>
-                  <strong className="text-white font-mono">100%</strong>
-                </div>
-                <div className="p-2 bg-slate-900 rounded-lg">
-                  <span className="text-[10px] text-slate-400 uppercase block">Met</span>
-                  <strong className="text-emerald-400 font-mono">79%</strong>
-                </div>
-                <div className="p-2 bg-slate-900 rounded-lg">
-                  <span className="text-[10px] text-slate-400 uppercase block">Qualified</span>
-                  <strong className="text-blue-400 font-mono">54%</strong>
-                </div>
-                <div className="p-2 bg-slate-900 rounded-lg">
-                  <span className="text-[10px] text-slate-400 uppercase block">PO Won</span>
-                  <strong className="text-purple-400 font-mono">19%</strong>
-                </div>
-              </div>
-            </div>
-
-            <div className="text-right">
-              <Link href="/admin/cohorts" className="text-xs text-emerald-400 font-bold hover:underline">
-                Manage Cohort Publication &rarr;
+              <Link 
+                href="/admin/audit"
+                className="liquid-pill px-3 py-1.5 rounded-xl text-xs font-bold text-purple-400 hover:text-white flex items-center space-x-1 transition"
+              >
+                <span>Full Stream</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
               </Link>
+            </div>
+
+            <div className="mt-5 space-y-2.5 font-mono text-xs">
+              {recentAuditEvents.map((ev) => (
+                <div key={ev.id} className="liquid-glass-interactive p-3 rounded-xl flex items-center justify-between">
+                  <div className="overflow-hidden">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_6px_#c084fc]" />
+                      <span className="text-purple-300 font-bold">{ev.action}</span>
+                    </div>
+                    <p className="text-slate-300 text-[11px] truncate mt-0.5 font-sans font-medium">{ev.entity}</p>
+                  </div>
+                  <div className="text-right shrink-0 ml-4">
+                    <span className="text-[10px] text-slate-400 block">{ev.time}</span>
+                    <span className="text-[10px] text-slate-500 font-sans">{ev.actor}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Real-Time System Audit Log Feed */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-            <div className="flex items-center space-x-2">
-              <ScrollText className="w-4 h-4 text-purple-400" />
-              <h3 className="text-sm font-bold text-white">Privileged Audit Log Stream (public.audit_log)</h3>
+        {/* Bottom Banner: Program Economics Architecture */}
+        <div className="liquid-glass specular-edge p-6 rounded-3xl border-emerald-500/20 bg-emerald-950/10 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="space-y-1">
+            <div className="inline-flex items-center space-x-2 text-emerald-400 font-black text-[11px] uppercase tracking-wider">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Anti-Opaque Doctrine Invariants Enforced</span>
             </div>
-            <Link href="/admin/audit" className="text-xs text-purple-400 font-bold hover:underline">
-              View Full Audit Ledger &rarr;
-            </Link>
+            <h3 className="text-lg font-black text-white">8-Attempt SLA • $8,000 Success Fee Cap • $120/hr Loaded COGS</h3>
+            <p className="text-xs text-slate-300 max-w-3xl">
+              System database triggers reject captive broker kickbacks and unverified marketing introductions. All introductions 
+              require named enterprise champions with verified corporate domains.
+            </p>
           </div>
 
-          <div className="divide-y divide-slate-800 text-xs">
-            {recentAuditEvents.map((evt) => (
-              <div key={evt.id} className="py-3 flex items-center justify-between hover:bg-slate-800/30 px-2 rounded-lg transition">
-                <div className="flex items-center space-x-3">
-                  <span className="font-mono text-slate-400 text-[11px] w-24">{evt.time}</span>
-                  <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-slate-800 text-purple-300">
-                    {evt.action}
-                  </span>
-                  <span className="text-slate-200 font-medium">{evt.entity}</span>
-                </div>
-                <span className="font-mono text-slate-400 text-[11px]">{evt.actor}</span>
-              </div>
-            ))}
-          </div>
+          <Link
+            href="/admin/economics"
+            className="shrink-0 liquid-pill px-5 py-3 rounded-2xl text-xs font-black text-emerald-300 hover:text-white border-emerald-500/30 bg-emerald-500/10 flex items-center space-x-2"
+          >
+            <span>Inspect Economics (P&amp;L)</span>
+            <ArrowUpRight className="w-4 h-4" />
+          </Link>
         </div>
       </main>
     </div>
