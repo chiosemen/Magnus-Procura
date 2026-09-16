@@ -11,6 +11,8 @@ interface JobResponse {
   status: string;
 }
 
+let mockDbError: { message: string } | null = null;
+
 vi.mock('./lib/supabase', () => ({
   getSupabaseAdmin: vi.fn().mockReturnValue({
     from: vi.fn().mockReturnValue({
@@ -23,6 +25,12 @@ vi.mock('./lib/supabase', () => ({
       }),
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+        limit: vi.fn().mockImplementation(() =>
+          Promise.resolve({
+            data: mockDbError ? null : [{ id: 'profile-1' }],
+            error: mockDbError,
+          })
+        ),
       }),
       insert: vi.fn().mockResolvedValue({ data: null, error: null }),
     }),
@@ -35,12 +43,21 @@ vi.mock('./lib/resend', () => ({
 }));
 
 describe('API Healthcheck & Cron Security', () => {
-  it('returns 200 and healthy status on GET /health', async () => {
+  it('returns 200 and healthy status on GET /health when database is responsive', async () => {
+    mockDbError = null;
     const res = await app.request('/health');
     expect(res.status).toBe(200);
     const body = (await res.json()) as HealthResponse;
     expect(body.status).toBe('healthy');
     expect(body.service).toBe('magnus-procura-api');
+  });
+
+  it('returns 503 and unhealthy status on GET /health when database is degraded', async () => {
+    mockDbError = { message: 'connection pool timeout' };
+    const res = await app.request('/health');
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as HealthResponse;
+    expect(body.status).toBe('unhealthy');
   });
 
   it('rejects unauthenticated cron job calls when CRON_SECRET is set', async () => {

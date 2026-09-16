@@ -2,11 +2,16 @@ import { Hono } from 'hono';
 import { getSupabaseAdmin, mintSignedPacketUrl } from '../lib/supabase';
 import { sendIntroEmail } from '../lib/resend';
 import { writeAuditLog } from '../lib/audit';
+import { requireAuth, requireOperatorOrAdmin } from '../lib/auth';
 
 const intros = new Hono();
 
+intros.use('/:id/send', requireAuth);
+intros.use('/:id/send', requireOperatorOrAdmin);
+
 intros.post('/:id/send', async (c) => {
   const introId = c.req.param('id');
+  const user = c.get('user');
   const supabase = getSupabaseAdmin();
 
   try {
@@ -109,6 +114,7 @@ intros.post('/:id/send', async (c) => {
       entityType: 'intro',
       entityId: introId,
       meta: {
+        operatorId: user?.id,
         championId: champion.id,
         championEmail: champion.email,
         packetUrlMinted: Boolean(signedPacketUrl),

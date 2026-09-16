@@ -47,6 +47,14 @@ vi.mock('../lib/supabase', () => ({
 }));
 
 describe('Attestation Approval & Success Fee Calculation', () => {
+  it('rejects unauthenticated requests without authorization header', async () => {
+    const res = await app.request('/attestations/att_123/accept', {
+      method: 'POST',
+    });
+
+    expect(res.status).toBe(401);
+  });
+
   it('calculates 8% success fee for eligible purchase orders below cap', async () => {
     mockAttestation = {
       id: 'att_123',
@@ -58,6 +66,9 @@ describe('Attestation Approval & Success Fee Calculation', () => {
 
     const res = await app.request('/attestations/att_123/accept', {
       method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-admin-token',
+      },
     });
 
     expect(res.status).toBe(200);
@@ -78,6 +89,9 @@ describe('Attestation Approval & Success Fee Calculation', () => {
 
     const res = await app.request('/attestations/att_456/accept', {
       method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-admin-token',
+      },
     });
 
     expect(res.status).toBe(200);

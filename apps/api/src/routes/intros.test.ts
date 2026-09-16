@@ -64,6 +64,14 @@ vi.mock('../lib/resend', () => ({
 }));
 
 describe('Intro Dispatch Invariants', () => {
+  it('rejects unauthenticated requests without authorization header', async () => {
+    const res = await app.request('/intros/intro_123/send', {
+      method: 'POST',
+    });
+
+    expect(res.status).toBe(401);
+  });
+
   it('rejects dispatch when member has not approved intro copy', async () => {
     mockIntroData = {
       id: 'intro_unapproved',
@@ -77,6 +85,9 @@ describe('Intro Dispatch Invariants', () => {
 
     const res = await app.request('/intros/intro_unapproved/send', {
       method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-operator-token',
+      },
     });
 
     expect(res.status).toBe(400);
@@ -97,6 +108,9 @@ describe('Intro Dispatch Invariants', () => {
 
     const res = await app.request('/intros/intro_blocked_packet/send', {
       method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-operator-token',
+      },
     });
 
     expect(res.status).toBe(400);
@@ -117,6 +131,9 @@ describe('Intro Dispatch Invariants', () => {
 
     const res = await app.request('/intros/intro_valid/send', {
       method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-operator-token',
+      },
     });
 
     expect(res.status).toBe(200);

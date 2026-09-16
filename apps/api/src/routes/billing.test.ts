@@ -70,10 +70,26 @@ describe('Billing Routes', () => {
     expect(body.sessionUrl).toContain('checkout.stripe.com');
   });
 
-  it('creates Customer Portal session for existing customer', async () => {
+  it('rejects unauthenticated requests on POST /billing/portal', async () => {
     const res = await app.request('/billing/portal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orgId: '10000000-0000-0000-0000-000000000002',
+        returnUrl: 'https://app.magnusprocura.com/billing',
+      }),
+    });
+
+    expect(res.status).toBe(401);
+  });
+
+  it('creates Customer Portal session for authenticated existing customer', async () => {
+    const res = await app.request('/billing/portal', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer test-admin-token',
+      },
       body: JSON.stringify({
         orgId: '10000000-0000-0000-0000-000000000002',
         returnUrl: 'https://app.magnusprocura.com/billing',

@@ -1,11 +1,16 @@
 import { Hono } from 'hono';
 import { getSupabaseAdmin } from '../lib/supabase';
 import { writeAuditLog } from '../lib/audit';
+import { requireAuth, requireOperatorOrAdmin } from '../lib/auth';
 
 const attestations = new Hono();
 
+attestations.use('/:id/accept', requireAuth);
+attestations.use('/:id/accept', requireOperatorOrAdmin);
+
 attestations.post('/:id/accept', async (c) => {
   const attestationId = c.req.param('id');
+  const user = c.get('user');
   const supabase = getSupabaseAdmin();
 
   try {
@@ -60,6 +65,7 @@ attestations.post('/:id/accept', async (c) => {
       entityType: 'attestation',
       entityId: attestationId,
       meta: {
+        operatorId: user?.id,
         poAmountCents: attestation.amount_cents,
         successFeeCents,
         invoiceId: invoice?.id,

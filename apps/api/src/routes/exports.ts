@@ -3,11 +3,17 @@ import archiver from 'archiver';
 import { PassThrough } from 'stream';
 import { getSupabaseAdmin } from '../lib/supabase';
 import { writeAuditLog } from '../lib/audit';
+import { requireAuth, requireOrgRole } from '../lib/auth';
 
 const exportsRoute = new Hono();
 
+// Enforce authentication & organization membership checks
+exportsRoute.use('/org/:id', requireAuth);
+exportsRoute.use('/org/:id', requireOrgRole((c) => c.req.param('id') ?? '', ['owner', 'collaborator', 'admin']));
+
 exportsRoute.post('/org/:id', async (c) => {
   const orgId = c.req.param('id');
+  const user = c.get('user');
   const supabase = getSupabaseAdmin();
 
   try {
@@ -56,6 +62,7 @@ exportsRoute.post('/org/:id', async (c) => {
       JSON.stringify(
         {
           exportedAt: new Date().toISOString(),
+          requestedBy: user?.id,
           organization: org,
           introsCount: introsList?.length || 0,
           targetsCount: targetsList?.length || 0,
@@ -75,6 +82,7 @@ exportsRoute.post('/org/:id', async (c) => {
       entityType: 'organization',
       entityId: orgId,
       meta: {
+        userId: user?.id,
         introsCount: introsList?.length || 0,
         targetsCount: targetsList?.length || 0,
       },

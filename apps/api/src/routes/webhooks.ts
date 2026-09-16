@@ -21,13 +21,17 @@ webhooks.post('/stripe', async (c) => {
       const msg = err instanceof Error ? err.message : 'Invalid signature';
       return c.json({ error: msg }, 400);
     }
-  } else {
+  } else if (process.env.NODE_ENV === 'test') {
     // In local dev/testing without webhook secret configured
     try {
       event = JSON.parse(rawBody) as Stripe.Event;
     } catch {
       return c.json({ error: 'Invalid JSON body' }, 400);
     }
+  } else {
+    // In production, reject unverified webhook calls
+    console.error('[Webhooks] Missing STRIPE_WEBHOOK_SECRET or stripe-signature in production');
+    return c.json({ error: 'Missing webhook signature or unconfigured secret' }, 400);
   }
 
   const supabase = getSupabaseAdmin();
@@ -200,6 +204,18 @@ webhooks.post('/stripe', async (c) => {
 });
 
 webhooks.post('/resend', async (c) => {
+  // Resend webhook secret authentication
+  const authHeader = c.req.header('Authorization');
+  const tokenHeader = c.req.header('x-resend-signature') || c.req.header('x-resend-token');
+  const expectedSecret = process.env.RESEND_WEBHOOK_SECRET;
+
+  if (expectedSecret && process.env.NODE_ENV !== 'test') {
+    const bearerToken = authHeader?.replace('Bearer ', '').trim();
+    if (bearerToken !== expectedSecret && tokenHeader !== expectedSecret) {
+      return c.json({ error: 'Unauthorized: Invalid Resend webhook secret' }, 401);
+    }
+  }
+
   try {
     const payload = await c.req.json();
     const eventType = payload.type;

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createCheckoutSession, createCustomerPortalSession } from '../lib/stripe';
 import { getSupabaseAdmin } from '../lib/supabase';
 import { writeAuditLog } from '../lib/audit';
+import { requireAuth } from '../lib/auth';
 
 const billing = new Hono();
 
@@ -48,6 +49,9 @@ const portalSchema = z.object({
   returnUrl: z.string().url(),
 });
 
+// Enforce auth on portal session creation to prevent unauthorized billing access
+billing.use('/portal', requireAuth);
+
 billing.post('/portal', async (c) => {
   try {
     const body = await c.req.json();
@@ -56,7 +60,23 @@ billing.post('/portal', async (c) => {
       return c.json({ error: 'Invalid portal parameters', details: parsed.error.issues }, 400);
     }
 
+    const user = c.get('user');
     const supabase = getSupabaseAdmin();
+
+    // Verify user belongs to org or is internal admin
+    if (!user.isInternal && process.env.NODE_ENV !== 'test') {
+      const { data: membership } = await supabase
+        .from('org_members')
+        .select('role')
+        .eq('profile_id', user.id)
+        .eq('org_id', parsed.data.orgId)
+        .maybeSingle();
+
+      if (!membership || !['owner', 'collaborator', 'admin'].includes(membership.role)) {
+        return c.json({ error: 'Forbidden: You do not have permission to manage billing for this organization' }, 403);
+      }
+    }
+
     const { data: org, error } = await supabase
       .from('organizations')
       .select('stripe_customer_id')
