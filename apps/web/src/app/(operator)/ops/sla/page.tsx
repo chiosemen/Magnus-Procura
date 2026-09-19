@@ -10,7 +10,10 @@ import {
   PlayCircle, 
   Calendar, 
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  Sparkles,
+  RefreshCw,
+  Send
 } from 'lucide-react';
 
 interface ProgramSlaRow {
@@ -26,6 +29,9 @@ interface ProgramSlaRow {
   pausedReason?: string;
   daysRemaining: number;
   isDelinquent: boolean; // >50% behind
+  qbrMilestone?: string;
+  copyApprovalDaysPending?: number;
+  silencePaused?: boolean;
 }
 
 const INITIAL_SLA_DATA: ProgramSlaRow[] = [
@@ -41,6 +47,8 @@ const INITIAL_SLA_DATA: ProgramSlaRow[] = [
     clockStatus: 'active',
     daysRemaining: 319,
     isDelinquent: false,
+    qbrMilestone: 'Day 60 Due (in 5d)',
+    copyApprovalDaysPending: 3,
   },
   {
     orgId: 'org_cyber_sec',
@@ -54,6 +62,8 @@ const INITIAL_SLA_DATA: ProgramSlaRow[] = [
     clockStatus: 'active',
     daysRemaining: 58,
     isDelinquent: false,
+    qbrMilestone: 'Day 30 Completed',
+    copyApprovalDaysPending: 0,
   },
   {
     orgId: 'org_quantum_cast',
@@ -67,6 +77,8 @@ const INITIAL_SLA_DATA: ProgramSlaRow[] = [
     clockStatus: 'active',
     daysRemaining: 287,
     isDelinquent: true, // Expected ~2 delivered by month 2.5
+    qbrMilestone: 'Day 60 Due',
+    copyApprovalDaysPending: 0,
   },
   {
     orgId: 'org_bio_fluidics',
@@ -78,9 +90,12 @@ const INITIAL_SLA_DATA: ProgramSlaRow[] = [
     attemptsDelivered: 1,
     pendingApproval: 0,
     clockStatus: 'paused',
-    pausedReason: 'The File Blocked: Missing Past Performance Artifact',
+    pausedReason: '14-Day Silence / Blocked Packet',
     daysRemaining: 301,
     isDelinquent: false,
+    qbrMilestone: 'Day 60 Paused',
+    copyApprovalDaysPending: 0,
+    silencePaused: true,
   },
   {
     orgId: 'org_strata_clean',
@@ -94,11 +109,22 @@ const INITIAL_SLA_DATA: ProgramSlaRow[] = [
     clockStatus: 'active',
     daysRemaining: 17,
     isDelinquent: false,
+    qbrMilestone: 'Day 90 Completed',
+    copyApprovalDaysPending: 0,
   },
 ];
 
 export default function OperatorSlaMonitorPage() {
   const [slaData, setSlaData] = useState<ProgramSlaRow[]>(INITIAL_SLA_DATA);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simulationResult, setSimulationResult] = useState<string | null>(null);
+
+  const triggerTickQbr = async () => {
+    setIsSimulating(true);
+    await new Promise(r => setTimeout(r, 600));
+    setIsSimulating(false);
+    setSimulationResult('POST /jobs/tick-qbr executed: 2 QBR notices enqueued (Apex Day 60, Quantum Day 60). 1 Copy Approval turnaround ping sent (Apex).');
+  };
 
   const togglePause = (orgId: string) => {
     setSlaData((prev) =>
@@ -194,9 +220,32 @@ export default function OperatorSlaMonitorPage() {
 
         {/* SLA Programs Table */}
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-          <div className="p-5 border-b border-slate-200">
-            <h3 className="text-sm font-bold text-slate-900">Active Program SLA Matrix (programs_sla)</h3>
+          <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Active Program SLA Matrix (programs_sla)</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Normative view of attempts owed, delivered, and Day 30/60/90 cadence milestones</p>
+            </div>
+            <button
+              onClick={triggerTickQbr}
+              disabled={isSimulating}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-xs transition flex items-center space-x-2"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSimulating ? 'animate-spin text-indigo-600' : 'text-indigo-500'}`} />
+              <span>{isSimulating ? 'Auditing Cadence...' : 'Run Cadence Audit (tick-qbr)'}</span>
+            </button>
           </div>
+
+          {simulationResult && (
+            <div className="p-3.5 bg-indigo-50/90 border-b border-indigo-100 text-xs text-indigo-900 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                <span>{simulationResult}</span>
+              </div>
+              <button onClick={() => setSimulationResult(null)} className="text-indigo-600 hover:text-indigo-900 text-xs font-bold">
+                Dismiss
+              </button>
+            </div>
+          )}
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -207,6 +256,7 @@ export default function OperatorSlaMonitorPage() {
                   <th className="px-6 py-3.5">Delivery Period</th>
                   <th className="px-6 py-3.5">Attempts Progress</th>
                   <th className="px-6 py-3.5">Pending Approval</th>
+                  <th className="px-6 py-3.5">Cadence / QBR</th>
                   <th className="px-6 py-3.5">Clock Status</th>
                   <th className="px-6 py-3.5 text-right">Clock Control</th>
                 </tr>
@@ -267,6 +317,26 @@ export default function OperatorSlaMonitorPage() {
                       ) : (
                         <span className="text-slate-400">0 pending</span>
                       )}
+                    </td>
+
+                    {/* Cadence / QBR */}
+                    <td className="px-6 py-4">
+                      <div className="space-y-1">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
+                          {row.qbrMilestone || 'On Track'}
+                        </span>
+                        {row.copyApprovalDaysPending && row.copyApprovalDaysPending >= 3 ? (
+                          <div className="flex items-center space-x-1 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+                            <Send className="w-2.5 h-2.5" />
+                            <span>Copy Ping Sent (3d)</span>
+                          </div>
+                        ) : null}
+                        {row.silencePaused && (
+                          <div className="text-[10px] font-bold text-rose-800 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">
+                            14d Silence Auto-Pause
+                          </div>
+                        )}
+                      </div>
                     </td>
 
                     {/* Clock Status */}

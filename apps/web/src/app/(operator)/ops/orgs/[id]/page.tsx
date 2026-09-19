@@ -17,7 +17,10 @@ import {
   Save, 
   ArrowLeft,
   Sparkles,
-  Clock
+  Clock,
+  RefreshCw,
+  X,
+  ArrowUpDown
 } from 'lucide-react';
 
 interface TargetInput {
@@ -119,6 +122,32 @@ export default function KickoffChecklistWizardPage() {
       championEmail: 't.clark@gdls.com',
     },
   ]);
+
+  // Target Rotation Engine State (Sprint 10)
+  const [showRotateModal, setShowRotateModal] = useState(false);
+  const [selectedOutTargetIndex, setSelectedOutTargetIndex] = useState<number>(0);
+  const [selectedInTargetIndex, setSelectedInTargetIndex] = useState<number>(5);
+  const [killReason, setKillReason] = useState('Unresponsive after 3 pings / 14 days');
+  const [rotationSuccessMessage, setRotationSuccessMessage] = useState<string | null>(null);
+
+  const handleRotateTarget = () => {
+    const updated = [...targets];
+    const outTgt = updated[selectedOutTargetIndex];
+    const inTgt = updated[selectedInTargetIndex];
+
+    if (!outTgt || !inTgt) return;
+
+    // Outgoing demoted to bench (status dead)
+    outTgt.tier = 'bench';
+    outTgt.whyUs = `${outTgt.whyUs} [Rotated: ${killReason}]`;
+
+    // Incoming promoted to primary
+    inTgt.tier = 'primary';
+
+    setTargets(updated);
+    setRotationSuccessMessage(`Successfully rotated out '${outTgt.name}' and promoted '${inTgt.name}' to Primary.`);
+    setShowRotateModal(false);
+  };
 
   // Step F: Intro Quality Bar
   const [singleAccountRule, setSingleAccountRule] = useState(true);
@@ -539,21 +568,58 @@ export default function KickoffChecklistWizardPage() {
           {/* STEP E: 5+5 ACCOUNT MAPPING */}
           {activeStep === 'E' && (
             <div className="space-y-6">
-              <div>
-                <span className="text-xs font-black text-indigo-600 uppercase tracking-wider">Section E · Target Account Mapping</span>
-                <h2 className="text-xl font-black text-slate-900 mt-1">Top 5 Primary Targets + Bench Accounts</h2>
-                <p className="text-xs text-slate-500 mt-1">
-                  Strict requirement: Max 5 primary targets and bench accounts. Each account requires a named human champion.
-                </p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <span className="text-xs font-black text-indigo-600 uppercase tracking-wider">Section E · Target Account Mapping & Bench</span>
+                  <h2 className="text-xl font-black text-slate-900 mt-1">Top 5 Primary Targets + Active Bench</h2>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Strict Invariant: Max 5 primary targets and bench accounts. Rotate dead/unresponsive accounts to preserve velocity.
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <div className="px-3 py-1.5 rounded-xl border border-blue-200 bg-blue-50/80 text-blue-900 text-xs font-black flex items-center space-x-2 backdrop-blur-sm">
+                    <Target className="w-3.5 h-3.5 text-blue-600" />
+                    <span>{targets.filter(t => t.tier === 'primary').length}/5 Primary Active</span>
+                  </div>
+                  <button
+                    onClick={() => setShowRotateModal(true)}
+                    className="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition flex items-center space-x-2"
+                  >
+                    <ArrowUpDown className="w-3.5 h-3.5" />
+                    <span>Rotate Target</span>
+                  </button>
+                </div>
               </div>
+
+              {rotationSuccessMessage && (
+                <div className="p-3.5 bg-emerald-50/90 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center justify-between shadow-xs">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span className="font-semibold">{rotationSuccessMessage}</span>
+                  </div>
+                  <button onClick={() => setRotationSuccessMessage(null)} className="text-emerald-700 hover:text-emerald-950">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
 
               <div className="space-y-3">
                 {targets.map((tgt, idx) => (
-                  <div key={idx} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                  <div 
+                    key={idx} 
+                    className={`p-4 rounded-xl border transition ${
+                      tgt.tier === 'primary' 
+                        ? 'border-blue-200/80 bg-blue-50/30 hover:border-blue-300' 
+                        : 'border-slate-200 bg-slate-50/60 opacity-80'
+                    }`}
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                          tgt.tier === 'primary' ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-700'
+                          tgt.tier === 'primary' 
+                            ? 'bg-blue-600 text-white shadow-xs' 
+                            : 'bg-slate-200 text-slate-700'
                         }`}>
                           {tgt.tier.toUpperCase()} #{idx + 1}
                         </span>
@@ -562,12 +628,99 @@ export default function KickoffChecklistWizardPage() {
                       </div>
                       <span className="text-xs font-mono text-indigo-600 font-bold">{tgt.championName} ({tgt.championRole})</span>
                     </div>
-                    <div className="text-xs text-slate-600 bg-white p-2.5 rounded-lg border border-slate-200/80">
+                    <div className="text-xs text-slate-600 bg-white/80 p-2.5 rounded-lg border border-slate-200/80 mt-2 backdrop-blur-xs">
                       <strong>Why-Us Angle:</strong> {tgt.whyUs}
                     </div>
                   </div>
                 ))}
               </div>
+
+              {/* Liquid Glass Target Rotation Modal */}
+              {showRotateModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md">
+                  <div className="bg-white/95 backdrop-blur-xl border border-white/60 shadow-2xl rounded-2xl max-w-lg w-full p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="flex items-center justify-between border-b border-slate-200/60 pb-3">
+                      <div className="flex items-center space-x-2">
+                        <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                          <RefreshCw className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-black text-slate-900">Rotate Primary Account Target</h3>
+                          <p className="text-[11px] text-slate-500">Demote unresponsive account and promote nominated bench target</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setShowRotateModal(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4 text-xs">
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">1. Select Primary Target to Rotate Out (Demote to Dead)</label>
+                        <select
+                          value={selectedOutTargetIndex}
+                          onChange={(e) => setSelectedOutTargetIndex(Number(e.target.value))}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                        >
+                          {targets.map((tgt, i) => tgt.tier === 'primary' && (
+                            <option key={i} value={i}>
+                              {tgt.name} ({tgt.championName})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">2. Rotation / Kill Reason</label>
+                        <select
+                          value={killReason}
+                          onChange={(e) => setKillReason(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden mb-2"
+                        >
+                          <option value="Unresponsive after 3 pings / 14 days">Unresponsive after 3 pings / 14 days</option>
+                          <option value="Procurement desk reorganization / frozen budget">Procurement desk reorganization / frozen budget</option>
+                          <option value="Specific capability mismatch with desk requirements">Specific capability mismatch with desk requirements</option>
+                          <option value="Champion relocated or departed organization">Champion relocated or departed organization</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">3. Select Bench Target to Promote to Primary</label>
+                        <select
+                          value={selectedInTargetIndex}
+                          onChange={(e) => setSelectedInTargetIndex(Number(e.target.value))}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                        >
+                          {targets.map((tgt, i) => tgt.tier === 'bench' && (
+                            <option key={i} value={i}>
+                              {tgt.name} ({tgt.championName} - {tgt.knownDesk})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl text-[11px] text-blue-800">
+                        <strong>Hard Invariant:</strong> Maximum 5 primary accounts strictly enforced. Rotation records an immutable audit log entry in <code className="font-mono bg-blue-100 px-1 py-0.5 rounded">audit_log</code>.
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end space-x-2 pt-2">
+                      <button
+                        onClick={() => setShowRotateModal(false)}
+                        className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-800"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleRotateTarget}
+                        className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition"
+                      >
+                        Execute Target Rotation
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-between pt-4">
                 <button

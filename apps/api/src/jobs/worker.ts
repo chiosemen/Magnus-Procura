@@ -8,7 +8,7 @@
 import dotenv from 'dotenv';
 import { getSupabaseAdmin } from '../lib/supabase';
 import { writeAuditLog } from '../lib/audit';
-import { sendSlaWarningEmail } from '../lib/resend';
+import { sendSlaWarningEmail, sendQbrDueEmail } from '../lib/resend';
 
 dotenv.config();
 
@@ -115,6 +115,66 @@ async function runKeep90Tick() {
   }
 }
 
+async function runQbrTick() {
+  const supabase = getSupabaseAdmin();
+  const now = new Date();
+
+  try {
+    const { data: activePrograms } = await supabase
+      .from('programs')
+      .select(`
+        id,
+        org_id,
+        starts_on,
+        organizations!inner ( id, name )
+      `)
+      .eq('status', 'active');
+
+    let noticesSent = 0;
+    for (const prog of activePrograms || []) {
+      const org = Array.isArray(prog.organizations) ? prog.organizations[0] : prog.organizations;
+      const startsOn = new Date(prog.starts_on);
+      const diffDays = Math.floor((now.getTime() - startsOn.getTime()) / (1000 * 60 * 60 * 24));
+
+      let milestone: 'Day 30' | 'Day 60' | 'Day 90' | null = null;
+      if (diffDays >= 30 && diffDays <= 34) milestone = 'Day 30';
+      else if (diffDays >= 60 && diffDays <= 64) milestone = 'Day 60';
+      else if (diffDays >= 90 && diffDays <= 94) milestone = 'Day 90';
+
+      if (milestone) {
+        const { count } = await supabase
+          .from('audit_log')
+          .select('id', { count: 'exact', head: true })
+          .eq('action', 'cadence.qbr_notice_sent')
+          .eq('entity_id', prog.id)
+          .contains('meta', { milestone });
+
+        if (!count || count === 0) {
+          await sendQbrDueEmail({
+            operatorEmail: 'operator@magnusprocura.com',
+            orgName: org?.name || 'Member Org',
+            milestone,
+            daysSinceStart: diffDays,
+          });
+          await writeAuditLog({
+            action: 'cadence.qbr_notice_sent',
+            entityType: 'program',
+            entityId: prog.id,
+            meta: { orgId: prog.org_id, orgName: org?.name, milestone, daysSinceStart: diffDays },
+          });
+          noticesSent++;
+        }
+      }
+    }
+
+    if (noticesSent > 0) {
+      console.log(`[Magnus Worker] tick-qbr executed: ${noticesSent} QBR notices dispatched.`);
+    }
+  } catch (err) {
+    console.error('[Magnus Worker] Error in tick-qbr:', err);
+  }
+}
+
 async function runLoop() {
   console.log('[Magnus Worker] Worker loop started. Polling every 60 seconds.');
 
@@ -122,6 +182,7 @@ async function runLoop() {
     try {
       await runSlaTick();
       await runKeep90Tick();
+      await runQbrTick();
     } catch (err) {
       console.error('[Magnus Worker] Error in worker tick:', err);
     }

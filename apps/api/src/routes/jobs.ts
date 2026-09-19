@@ -1,6 +1,10 @@
 import { Hono } from 'hono';
 import { getSupabaseAdmin } from '../lib/supabase';
-import { sendSlaWarningEmail } from '../lib/resend';
+import { 
+  sendSlaWarningEmail, 
+  sendQbrDueEmail, 
+  sendCopyApprovalReminderEmail 
+} from '../lib/resend';
 import { writeAuditLog } from '../lib/audit';
 
 const jobs = new Hono();
@@ -21,6 +25,8 @@ jobs.post('/tick-sla', async (c) => {
   const supabase = getSupabaseAdmin();
   const now = new Date();
   const tenDaysAgo = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString();
+  const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString();
+  const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
 
   try {
     // A. 10-business-day no_response aging
@@ -33,7 +39,102 @@ jobs.post('/tick-sla', async (c) => {
 
     if (agedError) throw agedError;
 
-    // B. Check for SLA warning on active programs
+    // B. Client copy turnaround reminders (3 business days pending)
+    const { data: pendingIntros } = await supabase
+      .from('intros')
+      .select(`
+        id,
+        org_id,
+        created_at,
+        account_targets!inner ( name ),
+        people!inner ( name ),
+        organizations!inner ( name )
+      `)
+      .not('copy', 'is', null)
+      .is('approved_at', null)
+      .is('sent_at', null)
+      .lt('created_at', threeDaysAgo);
+
+    let copyRemindersSent = 0;
+    for (const intro of pendingIntros || []) {
+      const org = Array.isArray(intro.organizations) ? intro.organizations[0] : intro.organizations;
+      const target = Array.isArray(intro.account_targets) ? intro.account_targets[0] : intro.account_targets;
+      const person = Array.isArray(intro.people) ? intro.people[0] : intro.people;
+
+      const daysPending = Math.floor((now.getTime() - new Date(intro.created_at).getTime()) / (1000 * 60 * 60 * 24));
+
+      // Get owner email
+      const { data: ownerMember } = await supabase
+        .from('org_members')
+        .select('profiles!inner(email)')
+        .eq('org_id', intro.org_id)
+        .eq('role', 'owner')
+        .limit(1)
+        .maybeSingle();
+
+      const memberProfile = ownerMember && (Array.isArray(ownerMember.profiles) ? ownerMember.profiles[0] : ownerMember.profiles);
+      const memberEmail = memberProfile?.email || 'member@magnusprocura.com';
+
+      await sendCopyApprovalReminderEmail({
+        memberEmail,
+        orgName: org?.name || 'Member Organization',
+        championName: person?.name || 'Champion',
+        targetAccount: target?.name || 'Target Account',
+        daysPending,
+      });
+
+      await writeAuditLog({
+        action: 'intro.copy_reminder_sent',
+        entityType: 'intro',
+        entityId: intro.id,
+        meta: {
+          orgId: intro.org_id,
+          memberEmail,
+          daysPending,
+        },
+      });
+      copyRemindersSent++;
+    }
+
+    // C. 14-day silence SLA pause (3 pings / 14 days -> pause SLA by marking org 'unresponsive')
+    const { data: unapprovedOldIntros } = await supabase
+      .from('intros')
+      .select('org_id')
+      .not('copy', 'is', null)
+      .is('approved_at', null)
+      .lt('created_at', fourteenDaysAgo);
+
+    const unresponsiveOrgIds = new Set<string>();
+    for (const item of unapprovedOldIntros || []) {
+      unresponsiveOrgIds.add(item.org_id);
+    }
+
+    let pausedOrgsCount = 0;
+    for (const orgId of unresponsiveOrgIds) {
+      const { data: updatedOrg } = await supabase
+        .from('organizations')
+        .update({ status: 'unresponsive' })
+        .eq('id', orgId)
+        .eq('status', 'active')
+        .select('id, name')
+        .maybeSingle();
+
+      if (updatedOrg) {
+        pausedOrgsCount++;
+        await writeAuditLog({
+          action: 'organization.status_unresponsive_paused',
+          entityType: 'organization',
+          entityId: orgId,
+          meta: {
+            reason: '14 days silence on copy approval / packet',
+            previousStatus: 'active',
+            newStatus: 'unresponsive',
+          },
+        });
+      }
+    }
+
+    // D. Check for SLA warning on active programs
     const { data: slaRows } = await supabase
       .from('programs_sla')
       .select('*')
@@ -60,6 +161,8 @@ jobs.post('/tick-sla', async (c) => {
       entityType: 'job',
       meta: {
         agedCount: agedIntros?.length || 0,
+        copyRemindersSent,
+        pausedOrgsCount,
         warningsSent,
         timestamp: now.toISOString(),
       },
@@ -68,6 +171,8 @@ jobs.post('/tick-sla', async (c) => {
     return c.json({
       job: 'tick-sla',
       agedIntrosCount: agedIntros?.length || 0,
+      copyRemindersSent,
+      pausedOrgsCount,
       warningsSent,
       timestamp: now.toISOString(),
     });
@@ -244,6 +349,130 @@ jobs.post('/tick-hours', async (c) => {
   } catch (err: unknown) {
     console.error('[Jobs] tick-hours error:', err);
     const msg = err instanceof Error ? err.message : 'tick-hours failed';
+    return c.json({ error: msg }, 500);
+  }
+});
+
+// 5. tick-qbr (Daily 06:30 ET)
+jobs.post('/tick-qbr', async (c) => {
+  const supabase = getSupabaseAdmin();
+  const now = new Date();
+
+  try {
+    // A. Query all active programs
+    const { data: activePrograms, error: progError } = await supabase
+      .from('programs')
+      .select(`
+        id,
+        org_id,
+        starts_on,
+        sku,
+        organizations!inner (
+          id,
+          name,
+          status
+        )
+      `)
+      .eq('status', 'active');
+
+    if (progError) throw progError;
+
+    let noticesSent = 0;
+    const dispatchedMilestones: Array<{ programId: string; orgName: string; milestone: string; daysSinceStart: number }> = [];
+
+    for (const prog of activePrograms || []) {
+      const org = Array.isArray(prog.organizations) ? prog.organizations[0] : prog.organizations;
+      const startsOn = new Date(prog.starts_on);
+      const diffDays = Math.floor((now.getTime() - startsOn.getTime()) / (1000 * 60 * 60 * 24));
+
+      // Determine milestone
+      let milestone: 'Day 30' | 'Day 60' | 'Day 90' | null = null;
+      if (diffDays >= 30 && diffDays <= 34) {
+        milestone = 'Day 30';
+      } else if (diffDays >= 60 && diffDays <= 64) {
+        milestone = 'Day 60';
+      } else if (diffDays >= 90 && diffDays <= 94) {
+        milestone = 'Day 90';
+      }
+
+      if (milestone) {
+        // Prevent duplicate notices for this milestone
+        const { count } = await supabase
+          .from('audit_log')
+          .select('id', { count: 'exact', head: true })
+          .eq('action', 'cadence.qbr_notice_sent')
+          .eq('entity_id', prog.id)
+          .contains('meta', { milestone });
+
+        if (!count || count === 0) {
+          // Look up assigned operator or fallback
+          const { data: assignment } = await supabase
+            .from('operator_assignments')
+            .select(`
+              profiles!inner (
+                email
+              )
+            `)
+            .eq('org_id', prog.org_id)
+            .eq('active', true)
+            .limit(1)
+            .maybeSingle();
+
+          const profile = assignment && (Array.isArray(assignment.profiles) ? assignment.profiles[0] : assignment.profiles);
+          const operatorEmail = profile?.email || 'operator@magnusprocura.com';
+
+          await sendQbrDueEmail({
+            operatorEmail,
+            orgName: org?.name || 'Unknown Member',
+            milestone,
+            daysSinceStart: diffDays,
+          });
+
+          await writeAuditLog({
+            action: 'cadence.qbr_notice_sent',
+            entityType: 'program',
+            entityId: prog.id,
+            meta: {
+              orgId: prog.org_id,
+              orgName: org?.name,
+              milestone,
+              daysSinceStart: diffDays,
+              operatorEmail,
+            },
+          });
+
+          noticesSent++;
+          dispatchedMilestones.push({
+            programId: prog.id,
+            orgName: org?.name || 'Unknown',
+            milestone,
+            daysSinceStart: diffDays,
+          });
+        }
+      }
+    }
+
+    await writeAuditLog({
+      action: 'job.tick_qbr.completed',
+      entityType: 'job',
+      meta: {
+        programsEvaluated: activePrograms?.length || 0,
+        noticesSent,
+        dispatchedMilestones,
+        timestamp: now.toISOString(),
+      },
+    });
+
+    return c.json({
+      job: 'tick-qbr',
+      programsEvaluated: activePrograms?.length || 0,
+      noticesSent,
+      dispatchedMilestones,
+      timestamp: now.toISOString(),
+    });
+  } catch (err: unknown) {
+    console.error('[Jobs] tick-qbr error:', err);
+    const msg = err instanceof Error ? err.message : 'tick-qbr failed';
     return c.json({ error: msg }, 500);
   }
 });
