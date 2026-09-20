@@ -39,7 +39,8 @@ export const targetStatusEnum = pgEnum('target_status', [
   'met', 
   'qualified', 
   'opp', 
-  'dead'
+  'dead',
+  'exhausted'
 ]);
 export const introResultEnum = pgEnum('intro_result', [
   'sent', 
@@ -288,3 +289,14 @@ export const auditLog = pgTable('audit_log', {
   meta: jsonb('meta'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const doNotServe = pgTable('do_not_serve', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  entityName: text('entity_name').notNull(),
+  domain: text('domain'),
+  reason: text('reason').notNull(),
+  notes: text('notes'),
+  flaggedBy: uuid('flagged_by').references(() => profiles.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+

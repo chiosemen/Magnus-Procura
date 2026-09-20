@@ -66,11 +66,13 @@ targets.post('/:id/rotate', async (c) => {
 
   try {
     const body = await c.req.json().catch(() => ({}));
-    const { promoteTargetId, killReason } = body;
+    const { promoteTargetId, killReason, targetStatus = 'exhausted' } = body;
 
     if (!promoteTargetId) {
       return c.json({ error: 'promoteTargetId is required to rotate target' }, 400);
     }
+
+    const finalStatus: 'dead' | 'exhausted' = targetStatus === 'dead' ? 'dead' : 'exhausted';
 
     // 1. Fetch outgoing target
     const { data: outgoingTarget, error: outError } = await supabase
@@ -106,12 +108,12 @@ targets.post('/:id/rotate', async (c) => {
 
     const orgId = outgoingTarget.org_id;
 
-    // 5. Update outgoing target to dead status and bench tier
-    const reasonText = killReason ? ` [Rotated: ${killReason}]` : ' [Rotated by operator]';
+    // 5. Update outgoing target to exhausted/dead status and bench tier
+    const reasonText = killReason ? ` [Rotated: ${killReason}]` : ' [Rotated by operator at Day 30 QBR]';
     const { error: updateOutError } = await supabase
       .from('account_targets')
       .update({
-        status: 'dead',
+        status: finalStatus,
         tier: 'bench',
         why_us: outgoingTarget.why_us ? `${outgoingTarget.why_us}${reasonText}` : reasonText.trim(),
       })
@@ -136,7 +138,7 @@ targets.post('/:id/rotate', async (c) => {
       .select('id', { count: 'exact', head: true })
       .eq('org_id', orgId)
       .eq('tier', 'primary')
-      .neq('status', 'dead');
+      .not('status', 'in', '("dead","exhausted")');
 
     if (countError) throw countError;
 
@@ -156,17 +158,18 @@ targets.post('/:id/rotate', async (c) => {
         orgId,
         demotedTargetId: targetId,
         demotedTargetName: outgoingTarget.name,
+        demotedStatus: finalStatus,
         promotedTargetId: promoteTargetId,
         promotedTargetName: incomingTarget.name,
-        killReason: killReason || 'Unresponsive / operator rotation',
+        killReason: killReason || 'Day 30 QBR rotation / exhausted outreach cycle',
         operatorId: user?.id,
       },
     });
 
     return c.json({
       success: true,
-      message: `Successfully rotated target: demoted '${outgoingTarget.name}', promoted '${incomingTarget.name}'`,
-      demoted: { id: targetId, name: outgoingTarget.name, status: 'dead', tier: 'bench' },
+      message: `Successfully rotated target: demoted '${outgoingTarget.name}' (status: ${finalStatus}), promoted '${incomingTarget.name}' to Primary`,
+      demoted: { id: targetId, name: outgoingTarget.name, status: finalStatus, tier: 'bench' },
       promoted: { id: promoteTargetId, name: incomingTarget.name, status: 'research', tier: 'primary' },
       activePrimaryCount: primaryCount,
     });

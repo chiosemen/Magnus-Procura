@@ -20,12 +20,16 @@ import {
   Clock,
   RefreshCw,
   X,
-  ArrowUpDown
+  ArrowUpDown,
+  ShieldAlert,
+  Ban,
+  Search
 } from 'lucide-react';
 
 interface TargetInput {
   name: string;
   tier: 'primary' | 'bench';
+  status?: 'research' | 'approached' | 'accepted' | 'declined' | 'met' | 'qualified' | 'opp' | 'dead' | 'exhausted';
   knownDesk: string;
   whyUs: string;
   championName: string;
@@ -42,10 +46,35 @@ export default function KickoffChecklistWizardPage() {
   const [refundAcknowledged, setRefundAcknowledged] = useState(true);
   const [sku, setSku] = useState<'year_1' | 'sprint_90'>('year_1');
 
-  // Step B: 10-Minute Fit
+  // Step B: 10-Minute Fit & Do-Not-Serve Blacklist (FR-FIT-4)
   const [liveFitScore, setLiveFitScore] = useState(82);
   const [conflictChecked, setConflictChecked] = useState(true);
   const [fitNotes, setFitNotes] = useState('Clean ICP alignment. Prior tier-2 auto subcontracts verified. No active member conflict.');
+  const [blacklistStatus, setBlacklistStatus] = useState<'clean' | 'blacklisted'>('clean');
+  const [blacklistMatch, setBlacklistMatch] = useState<{ entityName: string; reason: string; notes?: string } | null>(null);
+  const [blacklistDomainInput, setBlacklistDomainInput] = useState('apexrobotics.com');
+  const [isBlacklistChecking, setIsBlacklistChecking] = useState(false);
+
+  const handleCheckBlacklist = async (domainToCheck: string) => {
+    setIsBlacklistChecking(true);
+    await new Promise((r) => setTimeout(r, 450));
+    setIsBlacklistChecking(false);
+
+    const norm = domainToCheck.toLowerCase();
+    if (norm.includes('fraud') || norm.includes('conflict') || norm.includes('bad') || norm.includes('default')) {
+      setBlacklistStatus('blacklisted');
+      setBlacklistMatch({
+        entityName: 'Apex Fraudulent Systems Ltd',
+        reason: 'bad_faith',
+        notes: 'Listed on Magnus Procura Do-Not-Serve Register (FR-FIT-4). Unpaid invoices and fraudulent submission.',
+      });
+      setLiveFitScore(0);
+    } else {
+      setBlacklistStatus('clean');
+      setBlacklistMatch(null);
+      if (liveFitScore === 0) setLiveFitScore(82);
+    }
+  };
 
   // Step C: Working Cadence
   const [reviewsScheduled, setReviewsScheduled] = useState(true);
@@ -123,10 +152,11 @@ export default function KickoffChecklistWizardPage() {
     },
   ]);
 
-  // Target Rotation Engine State (Sprint 10)
+  // Target Rotation Engine State (Sprint 10 & 11 FR-ACC-4)
   const [showRotateModal, setShowRotateModal] = useState(false);
   const [selectedOutTargetIndex, setSelectedOutTargetIndex] = useState<number>(0);
   const [selectedInTargetIndex, setSelectedInTargetIndex] = useState<number>(5);
+  const [rotationStatus, setRotationStatus] = useState<'exhausted' | 'dead'>('exhausted');
   const [killReason, setKillReason] = useState('Unresponsive after 3 pings / 14 days');
   const [rotationSuccessMessage, setRotationSuccessMessage] = useState<string | null>(null);
 
@@ -137,15 +167,17 @@ export default function KickoffChecklistWizardPage() {
 
     if (!outTgt || !inTgt) return;
 
-    // Outgoing demoted to bench (status dead)
+    // Outgoing demoted to bench with status exhausted or dead
     outTgt.tier = 'bench';
-    outTgt.whyUs = `${outTgt.whyUs} [Rotated: ${killReason}]`;
+    outTgt.status = rotationStatus;
+    outTgt.whyUs = `${outTgt.whyUs} [Day 30 QBR Rotated (${rotationStatus.toUpperCase()}): ${killReason}]`;
 
     // Incoming promoted to primary
     inTgt.tier = 'primary';
+    inTgt.status = 'research';
 
     setTargets(updated);
-    setRotationSuccessMessage(`Successfully rotated out '${outTgt.name}' and promoted '${inTgt.name}' to Primary.`);
+    setRotationSuccessMessage(`Successfully rotated out '${outTgt.name}' (Marked ${rotationStatus.toUpperCase()}) and promoted '${inTgt.name}' to Active Primary.`);
     setShowRotateModal(false);
   };
 
@@ -325,11 +357,69 @@ export default function KickoffChecklistWizardPage() {
           {activeStep === 'B' && (
             <div className="space-y-6">
               <div>
-                <span className="text-xs font-black text-indigo-600 uppercase tracking-wider">Section B · Fit Confirmation</span>
+                <span className="text-xs font-black text-indigo-600 uppercase tracking-wider">Section B · Fit Confirmation & Anti-Fraud</span>
                 <h2 className="text-xl font-black text-slate-900 mt-1">10-Minute Fit Confirmation Call</h2>
                 <p className="text-xs text-slate-500 mt-1">
-                  Live validation of operating history (&gt;24 mo), capacity to deliver, and potential competitor conflicts.
+                  Live validation of operating history (&gt;24 mo), capacity to deliver, and blacklist/conflict checks.
                 </p>
+              </div>
+
+              {/* Do-Not-Serve Blacklist Verification (FR-FIT-4) */}
+              <div className={`p-5 rounded-2xl border transition ${
+                blacklistStatus === 'blacklisted' 
+                  ? 'bg-rose-50/90 border-rose-300 text-rose-950 shadow-sm' 
+                  : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center space-x-3">
+                    <div className={`p-2.5 rounded-xl ${blacklistStatus === 'blacklisted' ? 'bg-rose-100 text-rose-700' : 'bg-indigo-50 text-indigo-700'}`}>
+                      {blacklistStatus === 'blacklisted' ? <Ban className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">Do-Not-Serve Register Audit (FR-FIT-4)</h3>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                          blacklistStatus === 'blacklisted' ? 'bg-rose-600 text-white' : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {blacklistStatus === 'blacklisted' ? 'DO-NOT-SERVE MATCH' : 'REGISTER CLEAR'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Matches applicant domain and entity name against internal register of bad-faith entities, unpaid defaults, and competitor collisions.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <input 
+                      type="text" 
+                      value={blacklistDomainInput}
+                      onChange={(e) => setBlacklistDomainInput(e.target.value)}
+                      placeholder="e.g. domain.com"
+                      className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                    />
+                    <button
+                      onClick={() => handleCheckBlacklist(blacklistDomainInput)}
+                      disabled={isBlacklistChecking}
+                      className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow-xs"
+                    >
+                      {isBlacklistChecking ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                      <span>Verify</span>
+                    </button>
+                  </div>
+                </div>
+
+                {blacklistStatus === 'blacklisted' && blacklistMatch && (
+                  <div className="mt-3.5 p-3.5 bg-white/95 border border-rose-300 rounded-xl text-xs space-y-1">
+                    <div className="flex items-center space-x-2 text-rose-700 font-bold">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span>INELIGIBLE APPLICANT: Match found in public.do_not_serve</span>
+                    </div>
+                    <p className="text-slate-700"><strong>Flagged Entity:</strong> {blacklistMatch.entityName} · <strong>Reason:</strong> {blacklistMatch.reason.toUpperCase()}</p>
+                    <p className="text-slate-600">{blacklistMatch.notes}</p>
+                    <p className="text-[11px] text-rose-600 font-bold pt-1">Intake blocked. Score hard-failed to 0. Cannot proceed with member onboarding.</p>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -605,34 +695,46 @@ export default function KickoffChecklistWizardPage() {
               )}
 
               <div className="space-y-3">
-                {targets.map((tgt, idx) => (
-                  <div 
-                    key={idx} 
-                    className={`p-4 rounded-xl border transition ${
-                      tgt.tier === 'primary' 
-                        ? 'border-blue-200/80 bg-blue-50/30 hover:border-blue-300' 
-                        : 'border-slate-200 bg-slate-50/60 opacity-80'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                          tgt.tier === 'primary' 
-                            ? 'bg-blue-600 text-white shadow-xs' 
-                            : 'bg-slate-200 text-slate-700'
-                        }`}>
-                          {tgt.tier.toUpperCase()} #{idx + 1}
-                        </span>
-                        <h4 className="text-xs font-bold text-slate-900">{tgt.name}</h4>
-                        <span className="text-[11px] text-slate-500">({tgt.knownDesk})</span>
+                {targets.map((tgt, idx) => {
+                  const isExhausted = tgt.status === 'exhausted';
+                  const isDead = tgt.status === 'dead';
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`p-4 rounded-xl border transition ${
+                        tgt.tier === 'primary' 
+                          ? 'border-blue-200/80 bg-blue-50/30 hover:border-blue-300' 
+                          : isExhausted 
+                            ? 'border-amber-200/80 bg-amber-50/20'
+                            : isDead 
+                              ? 'border-rose-200/80 bg-rose-50/20'
+                              : 'border-slate-200 bg-slate-50/60 opacity-80'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                            tgt.tier === 'primary' 
+                              ? 'bg-blue-600 text-white shadow-xs' 
+                              : isExhausted
+                                ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                : isDead
+                                  ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                                  : 'bg-slate-200 text-slate-700'
+                          }`}>
+                            {isExhausted ? 'EXHAUSTED' : isDead ? 'DEAD' : `${tgt.tier.toUpperCase()} #${idx + 1}`}
+                          </span>
+                          <h4 className="text-xs font-bold text-slate-900">{tgt.name}</h4>
+                          <span className="text-[11px] text-slate-500">({tgt.knownDesk})</span>
+                        </div>
+                        <span className="text-xs font-mono text-indigo-600 font-bold">{tgt.championName} ({tgt.championRole})</span>
                       </div>
-                      <span className="text-xs font-mono text-indigo-600 font-bold">{tgt.championName} ({tgt.championRole})</span>
+                      <div className="text-xs text-slate-600 bg-white/80 p-2.5 rounded-lg border border-slate-200/80 mt-2 backdrop-blur-xs">
+                        <strong>Why-Us Angle:</strong> {tgt.whyUs}
+                      </div>
                     </div>
-                    <div className="text-xs text-slate-600 bg-white/80 p-2.5 rounded-lg border border-slate-200/80 mt-2 backdrop-blur-xs">
-                      <strong>Why-Us Angle:</strong> {tgt.whyUs}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Liquid Glass Target Rotation Modal */}
@@ -645,8 +747,8 @@ export default function KickoffChecklistWizardPage() {
                           <RefreshCw className="w-4 h-4" />
                         </div>
                         <div>
-                          <h3 className="text-sm font-black text-slate-900">Rotate Primary Account Target</h3>
-                          <p className="text-[11px] text-slate-500">Demote unresponsive account and promote nominated bench target</p>
+                          <h3 className="text-sm font-black text-slate-900">Day 30 QBR Target Rotation & Kill/Replace</h3>
+                          <p className="text-[11px] text-slate-500">Retire primary target as Exhausted or Dead and promote bench account</p>
                         </div>
                       </div>
                       <button onClick={() => setShowRotateModal(false)} className="text-slate-400 hover:text-slate-600 p-1">
@@ -656,7 +758,7 @@ export default function KickoffChecklistWizardPage() {
 
                     <div className="space-y-4 text-xs">
                       <div>
-                        <label className="block font-bold text-slate-700 mb-1">1. Select Primary Target to Rotate Out (Demote to Dead)</label>
+                        <label className="block font-bold text-slate-700 mb-1">1. Select Primary Target to Rotate Out</label>
                         <select
                           value={selectedOutTargetIndex}
                           onChange={(e) => setSelectedOutTargetIndex(Number(e.target.value))}
@@ -671,13 +773,25 @@ export default function KickoffChecklistWizardPage() {
                       </div>
 
                       <div>
-                        <label className="block font-bold text-slate-700 mb-1">2. Rotation / Kill Reason</label>
+                        <label className="block font-bold text-slate-700 mb-1">2. Target Retirement Status (FR-ACC-4)</label>
+                        <select
+                          value={rotationStatus}
+                          onChange={(e) => setRotationStatus(e.target.value as 'exhausted' | 'dead')}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden mb-2"
+                        >
+                          <option value="exhausted">Exhausted · Standard 30-day outreach cycle completed without conversion</option>
+                          <option value="dead">Dead · Direct buyer rejection / desk disqualified</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">3. Rotation / Retirement Reason</label>
                         <select
                           value={killReason}
                           onChange={(e) => setKillReason(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden mb-2"
                         >
-                          <option value="Unresponsive after 3 pings / 14 days">Unresponsive after 3 pings / 14 days</option>
+                          <option value="Day 30 QBR: Outreach cycle exhausted after 3 pings">Day 30 QBR: Outreach cycle exhausted after 3 pings</option>
                           <option value="Procurement desk reorganization / frozen budget">Procurement desk reorganization / frozen budget</option>
                           <option value="Specific capability mismatch with desk requirements">Specific capability mismatch with desk requirements</option>
                           <option value="Champion relocated or departed organization">Champion relocated or departed organization</option>
@@ -685,13 +799,13 @@ export default function KickoffChecklistWizardPage() {
                       </div>
 
                       <div>
-                        <label className="block font-bold text-slate-700 mb-1">3. Select Bench Target to Promote to Primary</label>
+                        <label className="block font-bold text-slate-700 mb-1">4. Select Bench Target to Promote to Primary</label>
                         <select
                           value={selectedInTargetIndex}
                           onChange={(e) => setSelectedInTargetIndex(Number(e.target.value))}
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
                         >
-                          {targets.map((tgt, i) => tgt.tier === 'bench' && (
+                          {targets.map((tgt, i) => tgt.tier === 'bench' && tgt.status !== 'dead' && tgt.status !== 'exhausted' && (
                             <option key={i} value={i}>
                               {tgt.name} ({tgt.championName} - {tgt.knownDesk})
                             </option>

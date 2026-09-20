@@ -12,6 +12,7 @@ import attestations from './routes/attestations';
 import exportsRoute from './routes/exports';
 import jobs from './routes/jobs';
 import targets from './routes/targets';
+import fit from './routes/fit';
 import { getSupabaseAdmin } from './lib/supabase';
 import { rateLimit } from './lib/ratelimit';
 
@@ -111,6 +112,7 @@ app.route('/attestations', attestations);
 app.route('/exports', exportsRoute);
 app.route('/jobs', jobs);
 app.route('/targets', targets);
+app.route('/fit', fit);
 
 const port = Number(process.env.PORT) || 8787;
 

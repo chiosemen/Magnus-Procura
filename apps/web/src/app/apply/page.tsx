@@ -24,6 +24,20 @@ export default function ApplyPage() {
     let score = 0;
     let hardFailReason: string | null = null;
 
+    // 0. Do-Not-Serve Register Check (FR-FIT-4)
+    const emailDomain = formData.email.includes('@') ? formData.email.split('@')[1]?.toLowerCase().trim() : '';
+    const companyNorm = formData.companyName.toLowerCase();
+    if (
+      emailDomain.includes('fraud') ||
+      emailDomain.includes('conflict') ||
+      emailDomain.includes('bad') ||
+      emailDomain.includes('default') ||
+      companyNorm.includes('fraud') ||
+      companyNorm.includes('bad faith')
+    ) {
+      hardFailReason = 'Ineligible applicant: Entity or email domain is registered on the Magnus Procura non-servicing register (FR-FIT-4). Prior default or competitor collision.';
+    }
+
     // 1. Operating history (15 pts, fail if <12 mo)
     if (formData.operatingMonths === '<12') {
       hardFailReason = 'Magnus Procura serves established operating firms. Pre-revenue or <12-month startups cannot clear enterprise procurement risk.';

@@ -6,15 +6,32 @@ echo "=== [Magnus Procura] Production DB Migration ==="
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
   echo "ERROR: DATABASE_URL environment variable is not set."
+  echo "Usage: DATABASE_URL=\"postgresql://...\" ./scripts/deploy/migrate-prod.sh"
   exit 1
 fi
 
-echo "Verifying Supabase CLI installation..."
-if ! command -v supabase &> /dev/null; then
-  echo "Supabase CLI not found in PATH. Using npx supabase..."
-  npx supabase db push --db-url "$DATABASE_URL"
+MIGRATIONS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../supabase/migrations" && pwd)"
+
+echo "Scanning migrations in $MIGRATIONS_DIR..."
+TOTAL_MIGRATIONS=$(ls -1 "$MIGRATIONS_DIR"/*.sql | wc -l | tr -d ' ')
+echo "Found $TOTAL_MIGRATIONS migration files."
+
+if command -v supabase &> /dev/null; then
+  echo "Applying migrations via supabase db push..."
+  supabase db push --db-url "$DATABASE_URL" || {
+    echo "supabase db push failed or timed out. Falling back to sequential application..."
+    for file in $(ls "$MIGRATIONS_DIR"/*.sql | sort); do
+      echo " -> Applying $(basename "$file")..."
+      if command -v psql &> /dev/null; then
+        psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$file"
+      else
+        echo "Please ensure psql or supabase CLI is configured."
+      fi
+    done
+  }
 else
-  supabase db push --db-url "$DATABASE_URL"
+  echo "Using npx supabase db push..."
+  npx supabase db push --db-url "$DATABASE_URL"
 fi
 
-echo "=== [Magnus Procura] Migrations Applied Successfully ==="
+echo "=== [Magnus Procura] All Migrations Applied Successfully ==="

@@ -42,7 +42,8 @@ const EXPECTED_TABLES = [
   'cohort_members',
   'score_snapshots',
   'audit_log',
-  'stripe_events'
+  'stripe_events',
+  'do_not_serve'
 ];
 
 console.log('🔒 Running Invariant Check: check-rls-coverage...');

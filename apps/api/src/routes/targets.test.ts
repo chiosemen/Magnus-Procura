@@ -18,6 +18,10 @@ vi.mock('../lib/supabase', () => ({
                       count: mockPrimaryCount,
                       error: null,
                     }),
+                    not: vi.fn().mockResolvedValue({
+                      count: mockPrimaryCount,
+                      error: null,
+                    }),
                   }),
                 }),
               };
@@ -181,7 +185,7 @@ describe('Target Rotation & Bench Promotion Engine', () => {
     expect(body.error).toContain('must currently be in bench tier');
   });
 
-  it('successfully rotates target and promotes bench target', async () => {
+  it('successfully rotates target and promotes bench target with default exhausted status', async () => {
     const res = await app.request('/targets/tgt_primary_1/rotate', {
       method: 'POST',
       headers: {
@@ -198,9 +202,29 @@ describe('Target Rotation & Bench Promotion Engine', () => {
     const body = (await res.json()) as any;
     expect(body.success).toBe(true);
     expect(body.demoted.name).toBe('Ford Motor Company');
-    expect(body.demoted.status).toBe('dead');
+    expect(body.demoted.status).toBe('exhausted');
     expect(body.promoted.name).toBe('General Dynamics');
     expect(body.promoted.tier).toBe('primary');
+  });
+
+  it('allows explicit dead status rotation for disqualified targets', async () => {
+    const res = await app.request('/targets/tgt_primary_1/rotate', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-operator-token',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        promoteTargetId: 'tgt_bench_1',
+        killReason: 'Account disqualified',
+        targetStatus: 'dead',
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(true);
+    expect(body.demoted.status).toBe('dead');
   });
 
   it('rejects rotation if 5 primary target cap would be violated', async () => {
