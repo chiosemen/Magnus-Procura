@@ -1,15 +1,65 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import MemberHeader from '@/components/MemberHeader';
 import { ArrowRight, CheckCircle2, TrendingUp, AlertTriangle } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 
 export default function ScoreboardPage() {
+  const [metrics, setMetrics] = useState({
+    funnel: {
+      sent: 2,
+      accepted: 1,
+      met: 1,
+      qualified: 1,
+      opportunity: 1,
+      poAwarded: 0,
+      kept90: 1,
+    },
+    rates: {
+      sentToMetRate: 50.0,
+      metToQualifiedRate: 100.0,
+      poConversionRate: 0.0,
+    },
+    loading: true,
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadMetrics() {
+      try {
+        const orgId = '10000000-0000-0000-0000-000000000002';
+        const res = await apiFetch(`/scoreboard/org/${orgId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data.funnel && data.rates) {
+            setMetrics({
+              funnel: data.funnel,
+              rates: data.rates,
+              loading: false,
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch dynamic scoreboard metrics:', err);
+      } finally {
+        if (isMounted) {
+          setMetrics(prev => ({ ...prev, loading: false }));
+        }
+      }
+    }
+    loadMetrics();
+    return () => { isMounted = false; };
+  }, []);
+
   const funnelStages = [
-    { label: 'Sent', count: 2, subtext: 'Delivered attempts', color: 'bg-blue-600' },
-    { label: 'Accepted', count: 1, subtext: 'Written yes to meet', color: 'bg-indigo-600' },
-    { label: 'Met', count: 1, subtext: 'Both sides showed up', color: 'bg-emerald-600' },
-    { label: 'Qualified', count: 1, subtext: 'Stated corporate need', color: 'bg-teal-600' },
-    { label: 'Opportunity', count: 1, subtext: 'RFP / proposal in-flight', color: 'bg-cyan-600' },
-    { label: 'PO Awarded', count: 0, subtext: 'Attested contract / PO', color: 'bg-amber-600' },
-    { label: 'Kept-90', count: 1, subtext: 'Active past refund', color: 'bg-purple-600' },
+    { label: 'Sent', count: metrics.funnel.sent, subtext: 'Delivered attempts', color: 'bg-blue-600' },
+    { label: 'Accepted', count: metrics.funnel.accepted, subtext: 'Written yes to meet', color: 'bg-indigo-600' },
+    { label: 'Met', count: metrics.funnel.met, subtext: 'Both sides showed up', color: 'bg-emerald-600' },
+    { label: 'Qualified', count: metrics.funnel.qualified, subtext: 'Stated corporate need', color: 'bg-teal-600' },
+    { label: 'Opportunity', count: metrics.funnel.opportunity, subtext: 'RFP / proposal in-flight', color: 'bg-cyan-600' },
+    { label: 'PO Awarded', count: metrics.funnel.poAwarded, subtext: 'Attested contract / PO', color: 'bg-amber-600' },
+    { label: 'Kept-90', count: metrics.funnel.kept90, subtext: 'Active past refund', color: 'bg-purple-600' },
   ];
 
   return (
@@ -66,8 +116,10 @@ export default function ScoreboardPage() {
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Sent → Met Rate</span>
               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             </div>
-            <div className="text-2xl font-black text-slate-900">50.0%</div>
-            <p className="text-xs text-slate-500 mt-1">1 meeting held out of 2 attempts delivered.</p>
+            <div className="text-2xl font-black text-slate-900">{metrics.rates.sentToMetRate.toFixed(1)}%</div>
+            <p className="text-xs text-slate-500 mt-1">
+              {metrics.funnel.met} meeting{metrics.funnel.met === 1 ? '' : 's'} held out of {metrics.funnel.sent} attempt{metrics.funnel.sent === 1 ? '' : 's'} delivered.
+            </p>
             <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between text-[11px]">
               <span className="text-slate-400">PRD Target</span>
               <span className="text-emerald-600 font-bold">≥ 50% (Healthy)</span>
@@ -79,8 +131,10 @@ export default function ScoreboardPage() {
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Met → Qualified Rate</span>
               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             </div>
-            <div className="text-2xl font-black text-slate-900">100%</div>
-            <p className="text-xs text-slate-500 mt-1">1 corporate need identified with buyer next step.</p>
+            <div className="text-2xl font-black text-slate-900">{metrics.rates.metToQualifiedRate.toFixed(1)}%</div>
+            <p className="text-xs text-slate-500 mt-1">
+              {metrics.funnel.qualified} corporate need{metrics.funnel.qualified === 1 ? '' : 's'} identified with buyer next step.
+            </p>
             <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between text-[11px]">
               <span className="text-slate-400">PRD Target</span>
               <span className="text-emerald-600 font-bold">≥ 40% (Healthy)</span>

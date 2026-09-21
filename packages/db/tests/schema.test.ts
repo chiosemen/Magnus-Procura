@@ -39,12 +39,12 @@ describe('Database Schema & Migration Integrity', () => {
     expect(schema.doNotServe).toBeDefined();
   });
 
-  it('contains all 8 numbered SQL migration files in sequence', () => {
+  it('contains all 9 numbered SQL migration files in sequence', () => {
     const migrationsDir = path.resolve(__dirname, '../../../supabase/migrations');
     expect(fs.existsSync(migrationsDir)).toBe(true);
 
     const files = fs.readdirSync(migrationsDir).sort();
-    expect(files.length).toBe(8);
+    expect(files.length).toBe(9);
 
     expect(files[0]).toMatch(/000001_core_schema\.sql$/);
     expect(files[1]).toMatch(/000002_the_file_schema\.sql$/);
@@ -54,6 +54,7 @@ describe('Database Schema & Migration Integrity', () => {
     expect(files[5]).toMatch(/000006_row_level_security\.sql$/);
     expect(files[6]).toMatch(/000007_stripe_idempotency\.sql$/);
     expect(files[7]).toMatch(/000001_do_not_serve\.sql$/);
+    expect(files[8]).toMatch(/000001_secure_internal_flag\.sql$/);
 
     // Verify each migration contains non-trivial content
     for (const file of files) {

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { getSupabaseAdmin } from '../lib/supabase';
 import { writeAuditLog } from '../lib/audit';
-import { requireAuth, requireOperatorOrAdmin } from '../lib/auth';
+import { requireAuth, requireOperatorOrAdmin, verifyOperatorForOrg } from '../lib/auth';
 
 const attestations = new Hono();
 
@@ -23,6 +23,11 @@ attestations.post('/:id/accept', async (c) => {
 
     if (attError || !attestation) {
       return c.json({ error: 'Attestation not found' }, 404);
+    }
+
+    // Enforce organization-specific operator authorization
+    if (user && !(await verifyOperatorForOrg(user, attestation.org_id))) {
+      return c.json({ error: 'Forbidden: You are not an assigned operator for this organization' }, 403);
     }
 
     if (attestation.status !== 'submitted') {

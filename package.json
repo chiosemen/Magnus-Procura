@@ -13,7 +13,9 @@
     "test:invariants": "node scripts/invariants/check-no-client-secrets.mjs && node scripts/invariants/check-rls-coverage.mjs && node scripts/invariants/check-intro-person-constraint.mjs"
   },
   "devDependencies": {
-    "typescript": "~5.8.2"
+    "@types/node": "^22.13.4",
+    "typescript": "~5.8.2",
+    "vitest": "^3.0.7"
   },
   "overrides": {
     "postcss": ">=8.5.23"

@@ -6,10 +6,11 @@ import {
   CheckCircle2, 
   Download, 
   FileText, 
-  ExternalLink,
-  Shield,
-  Info
+  ExternalLink, 
+  Shield, 
+  Info 
 } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 
 interface ArtifactItem {
   id: string;
@@ -102,10 +103,9 @@ export default function PacketVaultPage() {
   const handleExportZip = async () => {
     setDownloading(true);
     try {
-      // Direct call to privileged Railway API zip export endpoint
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
+      // Authenticated call to privileged Railway API zip export endpoint
       const orgId = '10000000-0000-0000-0000-000000000002';
-      const res = await fetch(`${apiUrl}/exports/org/${orgId}`, {
+      const res = await apiFetch(`/exports/org/${orgId}`, {
         method: 'POST',
       });
       if (!res.ok) throw new Error('Export generation failed');

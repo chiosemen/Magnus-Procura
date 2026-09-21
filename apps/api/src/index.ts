@@ -13,6 +13,7 @@ import exportsRoute from './routes/exports';
 import jobs from './routes/jobs';
 import targets from './routes/targets';
 import fit from './routes/fit';
+import scoreboard from './routes/scoreboard';
 import { getSupabaseAdmin } from './lib/supabase';
 import { rateLimit } from './lib/ratelimit';
 
@@ -113,6 +114,7 @@ app.route('/exports', exportsRoute);
 app.route('/jobs', jobs);
 app.route('/targets', targets);
 app.route('/fit', fit);
+app.route('/scoreboard', scoreboard);
 
 const port = Number(process.env.PORT) || 8787;
 

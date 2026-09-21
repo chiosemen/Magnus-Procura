@@ -10,6 +10,8 @@ out/
 dist
 dist-ssr
 *.tsbuildinfo
+coverage/
+*.lcov
 
 # Environment Files
 .env

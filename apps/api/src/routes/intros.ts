@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { getSupabaseAdmin, mintSignedPacketUrl } from '../lib/supabase';
 import { sendIntroEmail } from '../lib/resend';
 import { writeAuditLog } from '../lib/audit';
-import { requireAuth, requireOperatorOrAdmin } from '../lib/auth';
+import { requireAuth, requireOperatorOrAdmin, verifyOperatorForOrg } from '../lib/auth';
 
 const intros = new Hono();
 
@@ -43,6 +43,11 @@ intros.post('/:id/send', async (c) => {
 
     if (introError || !intro) {
       return c.json({ error: 'Introduction record not found' }, 404);
+    }
+
+    // Enforce organization-specific operator authorization
+    if (user && !(await verifyOperatorForOrg(user, intro.org_id))) {
+      return c.json({ error: 'Forbidden: You are not an assigned operator for this organization' }, 403);
     }
 
     // 2. Invariant: Member must have approved the copy before dispatch

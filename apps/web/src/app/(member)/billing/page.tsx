@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import MemberHeader from '@/components/MemberHeader';
 import { CreditCard, ExternalLink, ShieldCheck, Check, DollarSign } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 
 export default function BillingPage() {
   const [buyerName, setBuyerName] = useState('');
@@ -18,9 +19,8 @@ export default function BillingPage() {
   const handlePortal = async () => {
     setPortalLoading(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
       const orgId = '10000000-0000-0000-0000-000000000002';
-      const res = await fetch(`${apiUrl}/billing/portal`, {
+      const res = await apiFetch('/billing/portal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

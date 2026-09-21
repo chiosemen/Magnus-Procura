@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { getSupabaseAdmin } from '../lib/supabase';
 import { writeAuditLog } from '../lib/audit';
-import { requireAuth, requireOperatorOrAdmin } from '../lib/auth';
+import { requireAuth, requireOperatorOrAdmin, requireOperatorForOrg, verifyOperatorForOrg } from '../lib/auth';
 
 const targets = new Hono();
 
@@ -10,7 +10,7 @@ targets.use('*', requireOperatorOrAdmin);
 
 // GET /targets/org/:orgId
 // List primary and bench targets for a member organization
-targets.get('/org/:orgId', async (c) => {
+targets.get('/org/:orgId', requireOperatorForOrg((c) => c.req.param('orgId') ?? ''), async (c) => {
   const orgId = c.req.param('orgId') ?? '';
   const supabase = getSupabaseAdmin();
 
@@ -107,6 +107,11 @@ targets.post('/:id/rotate', async (c) => {
     }
 
     const orgId = outgoingTarget.org_id;
+
+    // Enforce organization-specific operator authorization
+    if (user && !(await verifyOperatorForOrg(user, orgId))) {
+      return c.json({ error: 'Forbidden: You are not an assigned operator for this organization' }, 403);
+    }
 
     // 5. Update outgoing target to exhausted/dead status and bench tier
     const reasonText = killReason ? ` [Rotated: ${killReason}]` : ' [Rotated by operator at Day 30 QBR]';

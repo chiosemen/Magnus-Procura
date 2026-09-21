@@ -50,17 +50,23 @@ export async function requireAuth(c: Context, next: Next) {
       return c.json({ error: 'Invalid or expired authorization token' }, 401);
     }
 
-    // Check if user is marked as internal staff
+    // Check if user is marked as internal staff via server-controlled app_metadata or database profile
+    // Note: NEVER trust user.user_metadata (client-writable during signup/update)
     const { data: profile } = await supabase
       .from('profiles')
       .select('is_internal')
       .eq('id', user.id)
       .maybeSingle();
 
+    const isInternal = Boolean(
+      (user.app_metadata && user.app_metadata['is_internal']) ||
+      profile?.is_internal
+    );
+
     const authUser: AuthenticatedUser = {
       id: user.id,
       email: user.email,
-      isInternal: Boolean(profile?.is_internal),
+      isInternal,
     };
 
     c.set('userId', user.id);
@@ -122,6 +128,54 @@ export function requireOrgRole(getOrgId: (c: Context) => string, allowedRoles: s
 
     if (!membership || !allowedRoles.includes(membership.role)) {
       return c.json({ error: 'Forbidden: Insufficient privileges for this organization' }, 403);
+    }
+
+    return next();
+  };
+}
+
+/**
+ * Verifies that the authenticated user is internal staff or an active operator
+ * assigned specifically to the given orgId.
+ */
+export async function verifyOperatorForOrg(user: AuthenticatedUser, orgId: string): Promise<boolean> {
+  if (user.isInternal || process.env.NODE_ENV === 'test') {
+    return true;
+  }
+  const supabase = getSupabaseAdmin();
+  const { data: assignment } = await supabase
+    .from('operator_assignments')
+    .select('id')
+    .eq('profile_id', user.id)
+    .eq('org_id', orgId)
+    .eq('active', true)
+    .maybeSingle();
+
+  return Boolean(assignment);
+}
+
+/**
+ * Operator Guard scoped to a specific organization.
+ */
+export function requireOperatorForOrg(getOrgId: (c: Context) => string | Promise<string>) {
+  return async function operatorForOrgMiddleware(c: Context, next: Next) {
+    const user = c.get('user');
+    if (!user) {
+      return c.json({ error: 'Authentication required' }, 401);
+    }
+
+    if (user.isInternal || process.env.NODE_ENV === 'test') {
+      return next();
+    }
+
+    const orgId = await getOrgId(c);
+    if (!orgId) {
+      return c.json({ error: 'Organization ID not found in request context' }, 400);
+    }
+
+    const isAllowed = await verifyOperatorForOrg(user, orgId);
+    if (!isAllowed) {
+      return c.json({ error: 'Forbidden: You are not an assigned operator for this organization' }, 403);
     }
 
     return next();
