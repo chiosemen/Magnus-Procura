@@ -28,14 +28,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build packages and applications
+        run: pnpm build
+
       - name: Type check (Strict TypeScript across all workspaces)
         run: pnpm typecheck
 
-      - name: Run test suites (packages/db & apps/api)
+      - name: Run test suites
         run: pnpm test
 
       - name: Automated Invariant Checks
         run: pnpm test:invariants
-
-      - name: Production build (apps/web, apps/api, packages/db)
-        run: pnpm build
