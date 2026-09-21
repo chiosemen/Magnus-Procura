@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import OperatorHeader from '@/components/OperatorHeader';
+import { apiFetch } from '@/lib/api';
 import { 
   CheckCircle2, 
   Circle, 
@@ -57,22 +58,32 @@ export default function KickoffChecklistWizardPage() {
 
   const handleCheckBlacklist = async (domainToCheck: string) => {
     setIsBlacklistChecking(true);
-    await new Promise((r) => setTimeout(r, 450));
-    setIsBlacklistChecking(false);
-
-    const norm = domainToCheck.toLowerCase();
-    if (norm.includes('fraud') || norm.includes('conflict') || norm.includes('bad') || norm.includes('default')) {
-      setBlacklistStatus('blacklisted');
-      setBlacklistMatch({
-        entityName: 'Apex Fraudulent Systems Ltd',
-        reason: 'bad_faith',
-        notes: 'Listed on Magnus Procura Do-Not-Serve Register (FR-FIT-4). Unpaid invoices and fraudulent submission.',
+    try {
+      const res = await apiFetch('/fit/check-blacklist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain: domainToCheck }),
       });
-      setLiveFitScore(0);
-    } else {
-      setBlacklistStatus('clean');
-      setBlacklistMatch(null);
-      if (liveFitScore === 0) setLiveFitScore(82);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.blacklisted) {
+          setBlacklistStatus('blacklisted');
+          setBlacklistMatch({
+            entityName: data.match?.entityName || 'Listed Non-Servicing Entity',
+            reason: data.match?.reason || 'bad_faith',
+            notes: 'Listed on Magnus Procura Do-Not-Serve Register (FR-FIT-4).',
+          });
+          setLiveFitScore(0);
+        } else {
+          setBlacklistStatus('clean');
+          setBlacklistMatch(null);
+          if (liveFitScore === 0) setLiveFitScore(82);
+        }
+      }
+    } catch (err) {
+      console.warn('Operator blacklist check error:', err);
+    } finally {
+      setIsBlacklistChecking(false);
     }
   };
 

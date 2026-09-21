@@ -6,6 +6,87 @@ import { requireAuth, requireOperatorOrAdmin, verifyOperatorForOrg } from '../li
 
 const intros = new Hono();
 
+intros.use('/org/:orgId', requireAuth);
+intros.get('/org/:orgId', async (c) => {
+  const orgId = c.req.param('orgId');
+  const supabase = getSupabaseAdmin();
+
+  try {
+    const { data, error } = await supabase
+      .from('intros')
+      .select(`
+        id,
+        org_id,
+        channel,
+        copy,
+        approved_at,
+        sent_at,
+        result,
+        people (
+          id,
+          name,
+          role,
+          email
+        ),
+        account_targets (
+          id,
+          name
+        )
+      `)
+      .eq('org_id', orgId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return c.json({ intros: data || [] });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Error listing intros';
+    return c.json({ error: msg }, 500);
+  }
+});
+
+intros.use('/:id/approve', requireAuth);
+intros.post('/:id/approve', async (c) => {
+  const introId = c.req.param('id');
+  const user = c.get('user');
+  const supabase = getSupabaseAdmin();
+
+  try {
+    const { data: intro, error: fetchError } = await supabase
+      .from('intros')
+      .select('id, org_id, approved_at')
+      .eq('id', introId)
+      .single();
+
+    if (fetchError || !intro) {
+      return c.json({ error: 'Introduction record not found' }, 404);
+    }
+
+    const approvedAt = new Date().toISOString();
+    const { error: updateError } = await supabase
+      .from('intros')
+      .update({ approved_at: approvedAt })
+      .eq('id', introId);
+
+    if (updateError) throw updateError;
+
+    await writeAuditLog({
+      action: 'intro.copy_approved',
+      entityType: 'intro',
+      entityId: introId,
+      meta: {
+        approvedBy: user?.id,
+        approvedAt,
+      },
+    });
+
+    return c.json({ success: true, introId, approvedAt });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Error approving introduction';
+    return c.json({ error: msg }, 500);
+  }
+});
+
 intros.use('/:id/send', requireAuth);
 intros.use('/:id/send', requireOperatorOrAdmin);
 

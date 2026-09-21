@@ -74,10 +74,10 @@ async function runAttestation() {
   const migrationsDir = path.join(rootDir, 'supabase/migrations');
   if (fs.existsSync(migrationsDir)) {
     const sqlFiles = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
-    if (sqlFiles.length >= 9) {
-      report('PASS', 'DATABASE', `All ${sqlFiles.length} sequential migrations verified (001 through 009).`);
+    if (sqlFiles.length >= 11) {
+      report('PASS', 'DATABASE', `All ${sqlFiles.length} sequential migrations verified.`);
     } else {
-      report('WARN', 'DATABASE', `Found ${sqlFiles.length} migrations, expected at least 9.`);
+      report('WARN', 'DATABASE', `Found ${sqlFiles.length} migrations, expected at least 11.`);
     }
 
     const hasDoNotServe = sqlFiles.some(f => {
@@ -239,10 +239,17 @@ async function runAttestation() {
   console.log('════════════════════════════════════════════════════════════════════════\n');
 
   if (failCount > 0) {
-    console.error('❌ Critical deployment attestation checks failed.');
+    console.error('❌ DEPLOYMENT STATUS: BLOCKED (Critical deployment attestation checks failed).');
     process.exit(1);
+  } else if (warnCount > 0) {
+    console.warn(`⚠️  DEPLOYMENT STATUS: BLOCKED / UNVERIFIED (${warnCount} warning(s) pending live infrastructure or active secret attestation).`);
+    if (isStrict) {
+      console.error('❌ Strict mode enabled (--strict): Failing due to unverified live attestations.');
+      process.exit(1);
+    }
+    process.exit(0);
   } else {
-    console.log('🚀 System is verified: code, migrations, and live service probes attested.');
+    console.log('🚀 DEPLOYMENT STATUS: FULLY ATTESTED (All code, migrations, and live service probes verified).');
     process.exit(0);
   }
 }

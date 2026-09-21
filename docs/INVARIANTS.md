@@ -11,13 +11,13 @@ This document tracks the verification status of Magnus Procura's 10 core archite
 | **1** | Postgres is the Product | Canonical Postgres tables & SQL views | `packages/db/tests/schema.test.ts` | 🟡 Active |
 | **2** | Zero Client Secrets | Secret isolation; client bundle scanner | `scripts/invariants/check-no-client-secrets.mjs` | 🟢 **PROVEN** |
 | **3** | 100% Forced RLS & View Isolation | `ENABLE` + `FORCE RLS` on 26 tables; `security_invoker = true` on 5 views | `scripts/invariants/check-rls-coverage.mjs`, `packages/db/tests/tenant-isolation.spec.ts` | 🟢 **PROVEN** |
-| **4** | Clock Starts at Packet Ready | Gated intro dispatch & SLA clocks | `packages/policy-engine/src/rules/packet.ts` | 🟡 In Progress (WS3) |
+| **4** | Clock Starts at Packet Ready | Gated intro dispatch & SLA clocks | `packages/policy-engine/src/rules/packet.ts`, `packages/db/tests/economics-and-invariants.spec.ts` | 🟢 **PROVEN (WS4)** |
 | **5** | Named Human Champions | `intros.person_id NOT NULL` foreign key | `scripts/invariants/check-intro-person-constraint.mjs` | 🟢 **PROVEN** |
 | **6** | 5+5 Target Account Limit | `trg_enforce_account_target_limits` on `INSERT OR UPDATE` | `packages/db/tests/tenant-isolation.spec.ts` | 🟢 **PROVEN (WS1)** |
-| **7** | 180-Day Decline Cooldown | Re-approach cooldown constraint | `packages/db/src/schema/intros.ts` | ⚪ Pending (WS4) |
-| **8** | Loaded COGS Discipline | 15 members/operator; 15 hrs/yr at \$120/hr cap | `public.unit_econ_run` view | ⚪ Pending (WS4) |
-| **9** | Capped Success Fees | 8% fee capped at \$8,000 on Net 15 | `apps/api/src/routes/attestations.ts` | ⚪ Pending (WS4) |
-| **10** | Keep-90 Bounty Ledger | \$500 referral bounty on Day 91 post-keep | `apps/api/src/routes/jobs.ts` | ⚪ Pending (WS4) |
+| **7** | 180-Day Decline Cooldown | Re-approach cooldown constraint | `packages/db/src/schema/intros.ts` | ⚪ Pending |
+| **8** | Loaded COGS Discipline | 15 members/operator; 15 hrs/yr at \$120/hr cap | `public.unit_econ_run` view, `packages/db/tests/economics-and-invariants.spec.ts` | 🟢 **PROVEN (WS4)** |
+| **9** | Capped Success Fees | 8% fee capped at \$8,000 on Net 15 | `apps/api/src/routes/attestations.ts`, `packages/db/tests/economics-and-invariants.spec.ts` | 🟢 **PROVEN (WS4)** |
+| **10** | Keep-90 Bounty Ledger | \$500 referral bounty on Day 91 post-keep | `apps/api/src/routes/jobs.ts`, `packages/db/tests/economics-and-invariants.spec.ts` | 🟢 **PROVEN (WS4)** |
 
 > [!NOTE]
 > **Invariant 6 Verification Audit (Phase 4 WS1)**:

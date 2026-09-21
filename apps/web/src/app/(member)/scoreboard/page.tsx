@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import MemberHeader from '@/components/MemberHeader';
 import { ArrowRight, CheckCircle2, TrendingUp, AlertTriangle } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import { getActiveOrgId } from '@/lib/orgContext';
 
 export default function ScoreboardPage() {
   const [metrics, setMetrics] = useState({
@@ -28,7 +29,7 @@ export default function ScoreboardPage() {
     let isMounted = true;
     async function loadMetrics() {
       try {
-        const orgId = '10000000-0000-0000-0000-000000000002';
+        const orgId = await getActiveOrgId();
         const res = await apiFetch(`/scoreboard/org/${orgId}`);
         if (res.ok) {
           const data = await res.json();

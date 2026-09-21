@@ -4,6 +4,7 @@ import { useState } from 'react';
 import MemberHeader from '@/components/MemberHeader';
 import { CreditCard, ExternalLink, ShieldCheck, Check, DollarSign } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import { getActiveOrgId } from '@/lib/orgContext';
 
 export default function BillingPage() {
   const [buyerName, setBuyerName] = useState('');
@@ -19,7 +20,7 @@ export default function BillingPage() {
   const handlePortal = async () => {
     setPortalLoading(true);
     try {
-      const orgId = '10000000-0000-0000-0000-000000000002';
+      const orgId = await getActiveOrgId();
       const res = await apiFetch('/billing/portal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

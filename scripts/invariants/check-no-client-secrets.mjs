@@ -63,8 +63,43 @@ function scanDirectory(dir) {
   }
 }
 
+const nextStaticDir = path.resolve(rootDir, 'apps/web/.next/static');
+
+function scanNextStaticBundle(bundleDir) {
+  if (!fs.existsSync(bundleDir)) {
+    console.log('ℹ️  apps/web/.next/static not found; skipping bundle scan (run build to test bundles).');
+    return;
+  }
+  console.log('📦 Scanning apps/web/.next/static production bundle for forbidden secrets...');
+
+  function scanBundleDir(dir) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        scanBundleDir(fullPath);
+      } else if (entry.isFile() && /\.(js|mjs)$/.test(entry.name)) {
+        const content = fs.readFileSync(fullPath, 'utf8');
+        FORBIDDEN_SECRETS.forEach((secret) => {
+          if (content.includes(secret)) {
+            violations.push({
+              file: path.relative(rootDir, fullPath),
+              line: 1,
+              secret,
+              code: `Found forbidden secret "${secret}" in client production chunk: ${path.basename(fullPath)}`
+            });
+          }
+        });
+      }
+    }
+  }
+
+  scanBundleDir(bundleDir);
+}
+
 console.log('🔒 Running Invariant Check: check-no-client-secrets...');
 scanDirectory(webSrcDir);
+scanNextStaticBundle(nextStaticDir);
 
 if (violations.length > 0) {
   console.error(`❌ INVARIANT VIOLATION: Found ${violations.length} secret references in web client:`);

@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import MemberHeader from '@/components/MemberHeader';
 import { Target, User, ShieldAlert, Plus, Layers } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
+import { getActiveOrgId } from '@/lib/orgContext';
 
 interface AccountTarget {
   id: string;
@@ -19,8 +21,9 @@ interface AccountTarget {
 
 export default function TargetAccountsPage() {
   const [activeTier, setActiveTier] = useState<'primary' | 'bench'>('primary');
+  const [isLive, setIsLive] = useState(false);
 
-  const [targets] = useState<AccountTarget[]>([
+  const [targets, setTargets] = useState<AccountTarget[]>([
     {
       id: '1',
       name: 'Lockheed Martin',
@@ -88,6 +91,38 @@ export default function TargetAccountsPage() {
       doNotHit: false,
     },
   ]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadTargets() {
+      try {
+        const orgId = await getActiveOrgId();
+        const res = await apiFetch(`/targets/org/${orgId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && Array.isArray(data.targets) && data.targets.length > 0) {
+            setTargets(data.targets.map((t: any) => ({
+              id: t.id,
+              name: t.name,
+              tier: t.tier,
+              status: t.status || 'research',
+              whyUs: t.why_us || t.whyUs || '',
+              knownDesk: t.known_desk || t.knownDesk || '',
+              championName: t.champion_name || t.championName,
+              championRole: t.champion_role || t.championRole,
+              championEmail: t.champion_email || t.championEmail,
+              doNotHit: t.do_not_hit ?? false,
+            })));
+            setIsLive(true);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load live targets from API:', err);
+      }
+    }
+    loadTargets();
+    return () => { isMounted = false; };
+  }, []);
 
   const filteredTargets = targets.filter((t) => t.tier === activeTier);
 

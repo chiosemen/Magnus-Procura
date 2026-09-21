@@ -427,6 +427,10 @@ export default function HomePage() {
           <p className="text-slate-400 text-sm mt-4">
             Aggregated conversion rates published across all active and completed member cohorts (n &ge; 10 required).
           </p>
+          <div className="mt-3 inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-950/60 border border-blue-800/60 text-blue-300 text-xs font-medium">
+            <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+            <span>Demonstration Benchmark Model · Live cohort publication triggers upon mature n &ge; 10 verified data</span>
+          </div>
         </div>
 
         {/* Liquid Funnel Progression */}
