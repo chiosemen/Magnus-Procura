@@ -4,6 +4,10 @@ set -euo pipefail
 # Magnus Procura — Production Database Migration Runner
 echo "=== [Magnus Procura] Production DB Migration ==="
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "Running Pre-Flight Deployment Environment Gate..."
+STRICT_ENV_CHECK=true node "$SCRIPT_DIR/verify-env.mjs"
+
 if [[ -z "${DATABASE_URL:-}" ]]; then
   echo "ERROR: DATABASE_URL environment variable is not set."
   echo "Usage: DATABASE_URL=\"postgresql://...\" ./scripts/deploy/migrate-prod.sh"

@@ -103,9 +103,16 @@ RETURNS TRIGGER AS $$
 DECLARE
     current_count INTEGER;
 BEGIN
+    -- On UPDATE, if tier and org_id did not change, limit is unaffected
+    IF TG_OP = 'UPDATE' AND OLD.tier = NEW.tier AND OLD.org_id = NEW.org_id THEN
+        RETURN NEW;
+    END IF;
+
     SELECT COUNT(*) INTO current_count
     FROM public.account_targets
-    WHERE org_id = NEW.org_id AND tier = NEW.tier;
+    WHERE org_id = NEW.org_id 
+      AND tier = NEW.tier
+      AND (TG_OP = 'INSERT' OR id != NEW.id);
 
     IF current_count >= 5 THEN
         RAISE EXCEPTION 'Organization cannot exceed 5 % targets', NEW.tier;
@@ -116,7 +123,7 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS enforce_account_target_limits_trg ON public.account_targets;
 CREATE TRIGGER enforce_account_target_limits_trg
-    BEFORE INSERT ON public.account_targets
+    BEFORE INSERT OR UPDATE ON public.account_targets
     FOR EACH ROW
     EXECUTE FUNCTION public.trg_enforce_account_target_limits();
 

@@ -165,4 +165,45 @@ describe.skipIf(!connectionString)('RLS authorization', () => {
       expect(rows[0].is_internal).toBe(true);
     });
   });
+
+
+  describe('normative SQL views', () => {
+    // A view without security_invoker executes as its OWNER. The migration owner
+    // holds BYPASSRLS, so such a view hands every tenant's rows to any caller who
+    // can select from it, even though the underlying tables have forced RLS.
+    //
+    // This was a real, reproduced leak: in one session the organizations table
+    // returned 0 rows to this role while member_funnel and unit_econ_run returned
+    // every tenant. These tests query the real views on a real database, so they
+    // fail if security_invoker is ever reset — which a CREATE OR REPLACE VIEW
+    // silently does.
+    const VIEWS = ['member_funnel', 'programs_sla', 'cohort_card', 'partner_scorecard', 'unit_econ_run'];
+
+    beforeAll(async () => {
+      await client.query(
+        `INSERT INTO public.organizations (id, name, type)
+         VALUES ('aaaaaaaa-0000-0000-0000-000000000001', 'Tenant A', 'member'),
+                ('bbbbbbbb-0000-0000-0000-000000000002', 'Tenant B', 'member')
+         ON CONFLICT (id) DO NOTHING`
+      );
+      for (const v of VIEWS) {
+        await client.query(`GRANT SELECT ON public.${v} TO authenticated`);
+      }
+    });
+
+    it.each(VIEWS)('%s returns zero rows to a user with no organization membership', async (view) => {
+      const { rows } = await asUser(MEMBER_ID, () => client.query(`SELECT * FROM public.${view}`));
+      expect(rows).toHaveLength(0);
+    });
+
+    it('views agree with the underlying table for the same caller', async () => {
+      const [tableCount, viewCount] = await asUser(MEMBER_ID, async () => {
+        const t = await client.query('SELECT COUNT(*)::int AS n FROM public.organizations');
+        const v = await client.query('SELECT COUNT(*)::int AS n FROM public.member_funnel');
+        return [t.rows[0].n, v.rows[0].n];
+      });
+      // The leak looked exactly like table=0 while view=2.
+      expect(viewCount).toBe(tableCount);
+    });
+  });
 });

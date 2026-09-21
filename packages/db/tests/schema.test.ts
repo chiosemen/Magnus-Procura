@@ -65,7 +65,7 @@ describe('Database Schema & Migration Integrity', () => {
     for (const file of files) {
       const content = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
       expect(content.length).toBeGreaterThan(100);
-      expect(content).toContain('CREATE');
+      expect(content).toMatch(/CREATE|ALTER/);
     }
   });
 
@@ -90,5 +90,28 @@ describe('Database Schema & Migration Integrity', () => {
     expect(migration006).toContain('is_admin()');
     expect(migration006).toContain('is_assigned_operator');
     expect(migration006).toContain('has_org_role');
+  });
+
+  it('migration 010 (WS1) enforces security_invoker on all 5 views and hardens target limits trigger', () => {
+    const migration010 = fs.readFileSync(
+      path.resolve(__dirname, '../../../supabase/migrations/20260921000002_ws1_tenant_isolation_and_target_limits.sql'),
+      'utf8'
+    );
+    expect(migration010).toContain('ALTER VIEW public.member_funnel SET (security_invoker = true);');
+    expect(migration010).toContain('ALTER VIEW public.programs_sla SET (security_invoker = true);');
+    expect(migration010).toContain('ALTER VIEW public.cohort_card SET (security_invoker = true);');
+    expect(migration010).toContain('ALTER VIEW public.partner_scorecard SET (security_invoker = true);');
+    expect(migration010).toContain('ALTER VIEW public.unit_econ_run SET (security_invoker = true);');
+    expect(migration010).toContain('BEFORE INSERT OR UPDATE ON public.account_targets');
+  });
+
+  it('migration 011 (WS4) defines atomic rotate_account_targets RPC and CTE fan-out fix', () => {
+    const migration011 = fs.readFileSync(
+      path.resolve(__dirname, '../../../supabase/migrations/20260921000003_ws4_truthful_reporting_and_atomic_rotation.sql'),
+      'utf8'
+    );
+    expect(migration011).toContain('CREATE OR REPLACE FUNCTION public.rotate_account_targets');
+    expect(migration011).toContain('WITH inv_agg AS');
+    expect(migration011).toContain('p.starts_on + INTERVAL \'90 days\'');
   });
 });

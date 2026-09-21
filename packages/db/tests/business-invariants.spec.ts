@@ -96,6 +96,32 @@ describe.skipIf(!connectionString)('Business invariants (README §Core Invariant
       });
     });
 
+    it('REJECTS promoting a bench target to primary when 5 primary already exist', async () => {
+      // The trigger originally fired BEFORE INSERT only. Inserting 5 primary +
+      // 1 bench and updating the bench row to primary yielded 6 primary targets,
+      // silently breaking the contractual cap. Reproduced on a live database
+      // before the INSERT OR UPDATE fix.
+      await inRollback(async () => {
+        const orgId = await createOrg('Update Bypass Org');
+        for (let i = 1; i <= 5; i++) await createTarget(orgId, `P${i}`, 'primary');
+        const benchId = await createTarget(orgId, 'B1', 'bench');
+
+        // The rejection aborts the surrounding transaction, so the assertion on
+        // the resulting row count needs a savepoint to roll back to.
+        await client.query('SAVEPOINT before_promotion');
+        await expect(
+          client.query(`UPDATE public.account_targets SET tier = 'primary' WHERE id = $1`, [benchId])
+        ).rejects.toThrow(/cannot exceed 5 primary targets/i);
+        await client.query('ROLLBACK TO SAVEPOINT before_promotion');
+
+        const { rows } = await client.query(
+          `SELECT COUNT(*)::int AS n FROM public.account_targets WHERE org_id = $1 AND tier = 'primary'`,
+          [orgId]
+        );
+        expect(rows[0].n).toBe(5);
+      });
+    });
+
     it('counts primary and bench tiers independently (5+5, not 5 total)', async () => {
       await inRollback(async () => {
         const orgId = await createOrg('Limit Org D');

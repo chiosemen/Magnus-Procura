@@ -127,8 +127,11 @@ describe('Cadence & SLA Cron Endpoints', () => {
     expect(body.dispatchedMilestones[0].orgName).toBe('Apex Industrial Robotics');
   });
 
-  it('tick-sla runs copy approval reminders and silence checks', async () => {
+  it('tick-sla runs copy approval reminders, silence checks, and SLA heartbeat', async () => {
     process.env.CRON_SECRET = 'test-secret';
+    process.env.CRON_HEARTBEAT_URL = 'https://cronitor.link/p/test-ping';
+    const globalFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('OK', { status: 200 }));
+
     mockIntrosData = [
       {
         id: 'intro_pending',
@@ -149,5 +152,13 @@ describe('Cadence & SLA Cron Endpoints', () => {
     const body = (await res.json()) as any;
     expect(body.job).toBe('tick-sla');
     expect(body.copyRemindersSent).toBe(1);
+    expect(body.heartbeatPinged).toBe(true);
+    expect(globalFetch).toHaveBeenCalledWith(
+      'https://cronitor.link/p/test-ping',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+
+    globalFetch.mockRestore();
+    delete process.env.CRON_HEARTBEAT_URL;
   });
 });

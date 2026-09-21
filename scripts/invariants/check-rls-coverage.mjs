@@ -1,20 +1,29 @@
 #!/usr/bin/env node
 /**
- * Invariant Check: 100% RLS Coverage and FORCE ROW LEVEL SECURITY on All Tables
+ * Invariant Check: RLS coverage on tables AND view security_invoker
  *
- * This check queries the live PostgreSQL catalog (pg_class / pg_policies) on a
- * database built by scripts/db/apply-migrations.mjs. It asserts, for every
- * application table in the `public` schema:
+ * Queries the live PostgreSQL catalog on a database built by
+ * scripts/db/apply-migrations.mjs. It asserts:
  *
- *   1. relrowsecurity      — ENABLE ROW LEVEL SECURITY
- *   2. relforcerowsecurity — FORCE ROW LEVEL SECURITY (owner is not exempt)
- *   3. at least one policy in pg_policies
+ *   Tables (pg_class / pg_policies), for every table in `public`:
+ *     1. relrowsecurity      — ENABLE ROW LEVEL SECURITY
+ *     2. relforcerowsecurity — FORCE ROW LEVEL SECURITY (owner is not exempt)
+ *     3. at least one policy in pg_policies
  *
- * It previously regex-matched the migration *text*, which proved only that a
- * string appeared in a file — it could not detect a policy that failed to apply,
- * was later dropped, or was silently replaced. Tables are now discovered from
- * the catalog rather than a hardcoded list, so a newly added table without RLS
- * fails this check instead of passing unnoticed.
+ *   Views (pg_class.reloptions), for every view in `public`:
+ *     4. security_invoker = true
+ *
+ * Rule 4 exists because a view without security_invoker executes as its OWNER.
+ * The migrations' owner holds BYPASSRLS, so such a view returns every tenant's
+ * rows to any caller who can select from it, even though the underlying tables
+ * have forced RLS. This was confirmed against a live database: the
+ * `organizations` table returned 0 rows to an unprivileged role in the same
+ * session where `member_funnel` and `unit_econ_run` returned every tenant.
+ *
+ * Both checks read the catalog rather than pattern-matching migration text.
+ * Matching text proves only that a string appears in a file: it cannot detect a
+ * statement that failed to apply, was later overridden, or was applied to a
+ * view that a subsequent CREATE OR REPLACE reset.
  */
 
 import pg from 'pg';
@@ -27,7 +36,7 @@ const EXEMPT_TABLES = new Set([
 
 const connectionString = process.env.DATABASE_URL;
 
-console.log('🔒 Running Invariant Check: check-rls-coverage (live catalog)...');
+console.log('🔒 Running Invariant Check: check-rls-coverage (live catalog: tables + views)...');
 
 if (!connectionString) {
   // Fail closed in CI: a skipped security check must never read as a pass.
@@ -50,12 +59,12 @@ try {
 }
 
 try {
-  const { rows } = await client.query(`
+  const { rows: tableRows } = await client.query(`
     SELECT
-      c.relname                                   AS table_name,
-      c.relrowsecurity                            AS rls_enabled,
-      c.relforcerowsecurity                       AS rls_forced,
-      COALESCE(p.policy_count, 0)::int            AS policy_count
+      c.relname                        AS table_name,
+      c.relrowsecurity                 AS rls_enabled,
+      c.relforcerowsecurity            AS rls_forced,
+      COALESCE(p.policy_count, 0)::int AS policy_count
     FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
     LEFT JOIN (
@@ -69,7 +78,24 @@ try {
     ORDER BY c.relname;
   `);
 
-  const tables = rows.filter((r) => !EXEMPT_TABLES.has(r.table_name));
+  // Views and materialized views. reloptions carries security_invoker when set.
+  const { rows: viewRows } = await client.query(`
+    SELECT
+      c.relname AS view_name,
+      COALESCE(
+        (SELECT option_value
+         FROM pg_options_to_table(c.reloptions)
+         WHERE option_name = 'security_invoker'),
+        'not set'
+      ) AS security_invoker
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relkind IN ('v', 'm')
+    ORDER BY c.relname;
+  `);
+
+  const tables = tableRows.filter((r) => !EXEMPT_TABLES.has(r.table_name));
 
   if (tables.length === 0) {
     console.error('❌ No tables found in schema "public" — migrations were not applied.');
@@ -90,6 +116,15 @@ try {
     }
   }
 
+  for (const v of viewRows) {
+    if (String(v.security_invoker).toLowerCase() !== 'true') {
+      errors.push(
+        `View "${v.view_name}" has security_invoker=${v.security_invoker} — ` +
+        `it executes as its owner and bypasses RLS on the underlying tables (cross-tenant leak)`
+      );
+    }
+  }
+
   if (errors.length > 0) {
     console.error(`\n❌ RLS coverage check FAILED with ${errors.length} violation(s):`);
     errors.forEach((e) => console.error(`   - ${e}`));
@@ -100,6 +135,10 @@ try {
   console.log(
     `✅ PASS: ${tables.length}/${tables.length} tables have ENABLE + FORCE ROW LEVEL SECURITY ` +
     `and at least one policy (${totalPolicies} policies verified in pg_policies).`
+  );
+  console.log(
+    `✅ PASS: ${viewRows.length}/${viewRows.length} views enforce security_invoker = true ` +
+    `(verified in pg_class.reloptions, not migration text).`
   );
 } catch (err) {
   console.error(`❌ RLS coverage check errored: ${err.message}`);

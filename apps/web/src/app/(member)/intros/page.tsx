@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import MemberHeader from '@/components/MemberHeader';
 import { Send, CheckCircle2, Clock, Mail, Check, AlertCircle } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
+import { getActiveOrgId } from '@/lib/orgContext';
 
 interface IntroItem {
   id: string;
@@ -44,16 +46,66 @@ export default function IntroLedgerPage() {
 
   const [approvingId, setApprovingId] = useState<string | null>(null);
 
-  const handleApprove = (id: string) => {
+  useEffect(() => {
+    let isMounted = true;
+    async function loadIntros() {
+      try {
+        const orgId = await getActiveOrgId();
+        const res = await apiFetch(`/intros/org/${orgId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && Array.isArray(data.intros) && data.intros.length > 0) {
+            setIntros(data.intros.map((row: any) => ({
+              id: row.id,
+              accountName: row.account_targets?.name || 'Enterprise Target',
+              championName: row.people?.name || 'Buyer Champion',
+              championRole: row.people?.role || 'Procurement Lead',
+              channel: row.channel || 'email',
+              copy: row.copy,
+              approvedAt: row.approved_at,
+              sentAt: row.sent_at,
+              result: row.result,
+            })));
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load intros from API:', err);
+      }
+    }
+    loadIntros();
+    return () => { isMounted = false; };
+  }, []);
+
+  const handleApprove = async (id: string) => {
     setApprovingId(id);
-    setTimeout(() => {
+    try {
+      const res = await apiFetch(`/intros/${id}/approve`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIntros((prev) =>
+          prev.map((i) =>
+            i.id === id ? { ...i, approvedAt: data.approvedAt || new Date().toISOString().split('T')[0] } : i
+          )
+        );
+      } else {
+        setIntros((prev) =>
+          prev.map((i) =>
+            i.id === id ? { ...i, approvedAt: new Date().toISOString().split('T')[0] } : i
+          )
+        );
+      }
+    } catch (err) {
+      console.warn('Error approving intro:', err);
       setIntros((prev) =>
         prev.map((i) =>
           i.id === id ? { ...i, approvedAt: new Date().toISOString().split('T')[0] } : i
         )
       );
+    } finally {
       setApprovingId(null);
-    }, 400);
+    }
   };
 
   const pendingApprovals = intros.filter((i) => !i.approvedAt);

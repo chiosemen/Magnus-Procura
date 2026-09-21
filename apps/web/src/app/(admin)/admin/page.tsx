@@ -155,9 +155,9 @@ export default function AdminExecutiveDashboardPage() {
               <div>
                 <h2 className="text-base font-black text-white tracking-tight flex items-center space-x-2">
                   <ScrollText className="w-4 h-4 text-purple-400" />
-                  <span>Real-Time Audit Feed</span>
+                  <span>Audit Feed (Simulation)</span>
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">Streaming privileged actions from public.audit_log</p>
+                <p className="text-xs text-slate-400 mt-0.5">Demonstration Audit Feed · Illustrative actions modeled on public.audit_log schema</p>
               </div>
               <Link 
                 href="/admin/audit"

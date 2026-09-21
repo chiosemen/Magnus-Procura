@@ -1,4 +1,4 @@
--- Migration: 20260921000002_policy_batch_idempotency.sql
+-- Migration: 20260921000004_policy_batch_idempotency.sql
 -- Description: Make the scoring evidence chain's policy batch idempotency
 --              enforceable by the database rather than by a read-then-write
 --              check in application code.

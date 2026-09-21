@@ -177,6 +177,31 @@ jobs.post('/tick-sla', async (c) => {
       }
     }
 
+    // SLA Dead-Man's Switch: Heartbeat Ping & Immutable Audit Heartbeat
+    let heartbeatPinged = false;
+    if (process.env.CRON_HEARTBEAT_URL) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        await fetch(process.env.CRON_HEARTBEAT_URL, { signal: controller.signal });
+        clearTimeout(timeout);
+        heartbeatPinged = true;
+      } catch (hbErr) {
+        console.warn('[Jobs] SLA cron heartbeat ping failed:', hbErr);
+      }
+    }
+
+    await writeAuditLog({
+      action: 'job.sla_heartbeat',
+      entityType: 'job',
+      meta: {
+        timestamp: now.toISOString(),
+        heartbeatPinged,
+        agedCount: agedIntros?.length || 0,
+        copyRemindersSent,
+      },
+    });
+
     await writeAuditLog({
       action: 'job.tick_sla.completed',
       entityType: 'job',
@@ -195,6 +220,7 @@ jobs.post('/tick-sla', async (c) => {
       copyRemindersSent,
       pausedOrgsCount,
       warningsSent,
+      heartbeatPinged,
       timestamp: now.toISOString(),
     });
   } catch (err: unknown) {

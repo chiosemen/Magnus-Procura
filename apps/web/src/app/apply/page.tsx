@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/api';
 
 export default function ApplyPage() {
   const [formData, setFormData] = useState({
@@ -18,25 +19,13 @@ export default function ApplyPage() {
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [blacklistHardFail, setBlacklistHardFail] = useState<string | null>(null);
 
   // ICP Score Calculation per PRD §11
   const calculateScore = () => {
     let score = 0;
-    let hardFailReason: string | null = null;
-
-    // 0. Do-Not-Serve Register Check (FR-FIT-4)
-    const emailDomain = formData.email.includes('@') ? formData.email.split('@')[1]?.toLowerCase().trim() : '';
-    const companyNorm = formData.companyName.toLowerCase();
-    if (
-      emailDomain.includes('fraud') ||
-      emailDomain.includes('conflict') ||
-      emailDomain.includes('bad') ||
-      emailDomain.includes('default') ||
-      companyNorm.includes('fraud') ||
-      companyNorm.includes('bad faith')
-    ) {
-      hardFailReason = 'Ineligible applicant: Entity or email domain is registered on the Magnus Procura non-servicing register (FR-FIT-4). Prior default or competitor collision.';
-    }
+    let hardFailReason: string | null = blacklistHardFail;
 
     // 1. Operating history (15 pts, fail if <12 mo)
     if (formData.operatingMonths === '<12') {
@@ -94,9 +83,35 @@ export default function ApplyPage() {
     return { score, hardFail: Boolean(hardFailReason), hardFailReason };
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setIsSubmitting(true);
+    setBlacklistHardFail(null);
+
+    const emailDomain = formData.email.includes('@') ? formData.email.split('@')[1]?.toLowerCase().trim() : '';
+
+    try {
+      const res = await apiFetch('/fit/check-blacklist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: emailDomain || null,
+          entityName: formData.companyName || null,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.blacklisted) {
+          setBlacklistHardFail('Ineligible applicant: Entity or email domain is registered on the Magnus Procura non-servicing register (FR-FIT-4). Prior default or competitor collision.');
+        }
+      }
+    } catch (err) {
+      console.warn('Blacklist check network error:', err);
+    } finally {
+      setIsSubmitting(false);
+      setSubmitted(true);
+    }
   };
 
   const result = calculateScore();

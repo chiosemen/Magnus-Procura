@@ -11,6 +11,7 @@ import {
   Info 
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import { getActiveOrgId } from '@/lib/orgContext';
 
 interface ArtifactItem {
   id: string;
@@ -103,8 +104,7 @@ export default function PacketVaultPage() {
   const handleExportZip = async () => {
     setDownloading(true);
     try {
-      // Authenticated call to privileged Railway API zip export endpoint
-      const orgId = '10000000-0000-0000-0000-000000000002';
+      const orgId = await getActiveOrgId();
       const res = await apiFetch(`/exports/org/${orgId}`, {
         method: 'POST',
       });
