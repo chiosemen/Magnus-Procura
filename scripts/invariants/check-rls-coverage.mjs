@@ -46,7 +46,15 @@ const EXPECTED_TABLES = [
   'do_not_serve'
 ];
 
-console.log('🔒 Running Invariant Check: check-rls-coverage...');
+const EXPECTED_VIEWS = [
+  'member_funnel',
+  'programs_sla',
+  'cohort_card',
+  'partner_scorecard',
+  'unit_econ_run'
+];
+
+console.log('🔒 Running Invariant Check: check-rls-coverage (Tables + Views)...');
 
 if (!fs.existsSync(migrationsDir)) {
   console.error(`❌ Migrations directory not found: ${migrationsDir}`);
@@ -75,11 +83,22 @@ EXPECTED_TABLES.forEach((table) => {
   }
 });
 
+EXPECTED_VIEWS.forEach((view) => {
+  // Check for either ALTER VIEW ... SET (security_invoker = true) or CREATE VIEW ... WITH (security_invoker = true)
+  const alterInvokerRegex = new RegExp(`ALTER\\s+VIEW\\s+(public\\.)?${view}\\s+SET\\s*\\(\\s*security_invoker\\s*=\\s*true\\s*\\)`, 'i');
+  const withInvokerRegex = new RegExp(`CREATE\\s+(OR\\s+REPLACE\\s+)?VIEW\\s+(public\\.)?${view}\\s+WITH\\s*\\(\\s*security_invoker\\s*=\\s*true\\s*\\)`, 'i');
+
+  if (!alterInvokerRegex.test(allSql) && !withInvokerRegex.test(allSql)) {
+    errors.push(`View "${view}" is missing security_invoker = true (RLS bypass vulnerability)`);
+  }
+});
+
 if (errors.length > 0) {
   console.error(`❌ RLS COVERAGE VIOLATIONS (${errors.length}):`);
   errors.forEach((err) => console.error(`  - ${err}`));
   process.exit(1);
 } else {
   console.log(`✅ PASS: All ${EXPECTED_TABLES.length} tables have ENABLE + FORCE ROW LEVEL SECURITY and active policies.`);
+  console.log(`✅ PASS: All ${EXPECTED_VIEWS.length} SQL views enforce security_invoker = true (zero tenant leakage).`);
   process.exit(0);
 }

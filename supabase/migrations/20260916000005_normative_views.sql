@@ -2,7 +2,7 @@
 -- Description: Normative SQL views encoding PRD business rules and funnel truth
 
 -- 1. member_funnel: counts by stage for an organization
-CREATE OR REPLACE VIEW public.member_funnel AS
+CREATE OR REPLACE VIEW public.member_funnel WITH (security_invoker = true) AS
 SELECT 
     o.id AS org_id,
     o.name AS org_name,
@@ -22,7 +22,7 @@ WHERE o.type = 'member'
 GROUP BY o.id, o.name;
 
 -- 2. programs_sla: SLA clock (attempts owed vs delivered vs paused)
-CREATE OR REPLACE VIEW public.programs_sla AS
+CREATE OR REPLACE VIEW public.programs_sla WITH (security_invoker = true) AS
 SELECT 
     p.id AS program_id,
     p.org_id,
@@ -48,7 +48,7 @@ LEFT JOIN public.intros i ON o.id = i.org_id
 GROUP BY p.id, p.org_id, o.name, p.sku, p.attempts_owed, p.starts_on, p.ends_on, p.refund_until, pkt.status, o.status;
 
 -- 3. cohort_card: aggregate funnel and median days per cohort
-CREATE OR REPLACE VIEW public.cohort_card AS
+CREATE OR REPLACE VIEW public.cohort_card WITH (security_invoker = true) AS
 SELECT 
     c.id AS cohort_id,
     c.name AS cohort_name,
@@ -71,7 +71,7 @@ LEFT JOIN public.programs p ON cm.org_id = p.org_id
 GROUP BY c.id, c.name, c.started_on, c.is_publishable;
 
 -- 4. partner_scorecard: metrics per partner org
-CREATE OR REPLACE VIEW public.partner_scorecard AS
+CREATE OR REPLACE VIEW public.partner_scorecard WITH (security_invoker = true) AS
 SELECT 
     pt.id AS partner_id,
     o.name AS partner_name,
@@ -90,7 +90,7 @@ LEFT JOIN public.bounties b ON r.id = b.referral_id
 GROUP BY pt.id, o.name, pt.status;
 
 -- 5. unit_econ_run: financial unit economics run per organization
-CREATE OR REPLACE VIEW public.unit_econ_run AS
+CREATE OR REPLACE VIEW public.unit_econ_run WITH (security_invoker = true) AS
 SELECT 
     o.id AS org_id,
     o.name AS org_name,
