@@ -16,6 +16,7 @@ import fit from './routes/fit';
 import scoreboard from './routes/scoreboard';
 import { getSupabaseAdmin } from './lib/supabase';
 import { rateLimit } from './lib/ratelimit';
+import { assertProductionSafety } from './lib/env-guard';
 
 dotenv.config();
 
@@ -121,6 +122,10 @@ const port = Number(process.env.PORT) || 8787;
 let server: ReturnType<typeof serve> | null = null;
 
 if (process.env.NODE_ENV !== 'test') {
+  // Refuse to bind a port if the process carries test-environment settings that
+  // would enable the authentication bypasses in lib/auth.ts.
+  assertProductionSafety();
+
   console.log(`[Magnus API] Server starting on port ${port}...`);
   server = serve({
     fetch: app.fetch,

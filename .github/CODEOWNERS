@@ -1,0 +1,14 @@
+# Review is required on every path. The point of a single reviewer of record is
+# that no change reaches main without a second pair of eyes on it — especially
+# when most code here is agent-authored.
+
+*                           @chiosemen
+
+# Paths where a mistake is a security incident rather than a bug.
+/supabase/migrations/       @chiosemen
+/apps/api/src/lib/          @chiosemen
+/apps/web/src/middleware.ts @chiosemen
+/scripts/invariants/        @chiosemen
+/docs/SECURITY-POLICY.md    @chiosemen
+/docs/INVARIANTS.md         @chiosemen
+/.github/workflows/         @chiosemen

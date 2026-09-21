@@ -63,6 +63,15 @@ describe('Adversarial Invariant Suite (Section 25 Hardening Doctrine)', () => {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
 
+      -- Mirrors supabase/migrations/20260921000002_policy_batch_idempotency.sql.
+      -- Batch idempotency is enforced by this unique index, not by a
+      -- read-then-write check in application code, so the fixture must carry it
+      -- or INVARIANT 7 would be proving nothing.
+      CREATE UNIQUE INDEX uq_audit_log_policy_batch_completed
+        ON audit_log ((meta->>'policyBatchId'))
+        WHERE action = 'policy.evaluation.completed'
+          AND meta->>'policyBatchId' IS NOT NULL;
+
       CREATE TABLE score_snapshots (
         id TEXT PRIMARY KEY,
         org_id TEXT NOT NULL,
