@@ -62,7 +62,7 @@ export const createOpenAiProvider = (config: OpenAiProviderConfig): LlmProvider 
   };
 
   const planToolCalls = async (ctx: AgentContext, request: PlanToolCallsRequest): Promise<ToolCallPlan> => {
-    const tools = request.tools.map((t) => `- ${t.name}: ${t.description} (inputSchemaId=${t.inputSchemaId}, outputSchemaId=${t.outputSchemaId})`).join('\n');
+    const tools = request.tools.map((t: { name: string; description: string; inputSchemaId: string; outputSchemaId: string }) => `- ${t.name}: ${t.description} (inputSchemaId=${t.inputSchemaId}, outputSchemaId=${t.outputSchemaId})`).join('\n');
 
     const system = [
       request.system,

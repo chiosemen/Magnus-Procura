@@ -5,6 +5,12 @@
     "allowJs": false,
     "baseUrl": ".",
     "paths": {
+      "agent-core": ["packages/agent-core/dist/index.d.ts"],
+      "agent-core/*": ["packages/agent-core/dist/*"],
+      "policy-engine": ["packages/policy-engine/dist/index.d.ts"],
+      "policy-engine/*": ["packages/policy-engine/dist/*"],
+      "agent-policies": ["packages/agent-policies/dist/index.d.ts"],
+      "agent-policies/*": ["packages/agent-policies/dist/*"],
       "@shared-types/*": ["packages/shared-types/dist/*"],
       "@shared-utils/*": ["packages/shared-utils/dist/*"],
       "@agent-core/*": ["packages/agent-core/dist/*"],
