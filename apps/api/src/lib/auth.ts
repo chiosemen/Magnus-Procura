@@ -1,5 +1,6 @@
 import type { Context, Next } from 'hono';
 import { getSupabaseAdmin } from './supabase';
+import { isTestBypassEnabled } from './env-guard';
 
 export interface AuthenticatedUser {
   id: string;
@@ -29,7 +30,7 @@ export async function requireAuth(c: Context, next: Next) {
   const token = authHeader.replace('Bearer ', '').trim();
 
   // Test bypass for unit/integration tests
-  if (process.env.NODE_ENV === 'test') {
+  if (isTestBypassEnabled()) {
     if (token.startsWith('test-') || token === 'mock-token') {
       const isInternal = token.includes('admin') || token.includes('internal') || token.includes('operator');
       c.set('userId', '00000000-0000-0000-0000-000000000001');
@@ -99,7 +100,7 @@ export function requireOrgRole(getOrgId: (c: Context) => string, allowedRoles: s
       return c.json({ error: 'Organization ID not found in request context' }, 400);
     }
 
-    if (process.env.NODE_ENV === 'test') {
+    if (isTestBypassEnabled()) {
       return next();
     }
 
@@ -139,7 +140,7 @@ export function requireOrgRole(getOrgId: (c: Context) => string, allowedRoles: s
  * assigned specifically to the given orgId.
  */
 export async function verifyOperatorForOrg(user: AuthenticatedUser, orgId: string): Promise<boolean> {
-  if (user.isInternal || process.env.NODE_ENV === 'test') {
+  if (user.isInternal || isTestBypassEnabled()) {
     return true;
   }
   const supabase = getSupabaseAdmin();
@@ -164,7 +165,7 @@ export function requireOperatorForOrg(getOrgId: (c: Context) => string | Promise
       return c.json({ error: 'Authentication required' }, 401);
     }
 
-    if (user.isInternal || process.env.NODE_ENV === 'test') {
+    if (user.isInternal || isTestBypassEnabled()) {
       return next();
     }
 
@@ -192,7 +193,7 @@ export async function requireOperatorOrAdmin(c: Context, next: Next) {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  if (user.isInternal || process.env.NODE_ENV === 'test') {
+  if (user.isInternal || isTestBypassEnabled()) {
     return next();
   }
 

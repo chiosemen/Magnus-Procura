@@ -1,6 +1,20 @@
 -- Migration: 20260921000003_ws4_truthful_reporting_and_atomic_rotation.sql
 -- Description: Atomic target rotation RPC, Cartesian fan-out fix for unit_econ_run, and accurate 90-day retention for kept90_count
 
+-- 0. programs.cancelled_at
+--
+-- The kept90_count logic below reads p.cancelled_at, but no migration ever
+-- created that column: public.programs carries only a `status` enum. Applying
+-- this migration to a real database therefore failed with
+-- `column p.cancelled_at does not exist`, which went unnoticed because CI had
+-- no database and matched migration text instead of executing it.
+--
+-- The column is added here rather than the predicate being rewritten against
+-- `status`, because `status` records only that a program is cancelled, never
+-- when. The retention rule needs the timestamp to distinguish a cancellation
+-- inside the 90-day window from one after it.
+ALTER TABLE public.programs ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ;
+
 -- 1. Atomic Target Rotation RPC Function
 -- Guarantees that target rotation (demote outgoing + promote incoming) occurs atomically
 -- within a single transaction with FOR UPDATE locks.

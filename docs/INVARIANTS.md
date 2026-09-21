@@ -1,65 +1,97 @@
-# Magnus Procura — Core Invariants Ledger
+# Magnus Procura — Invariant Register
 
-This document tracks the verification status of Magnus Procura's 10 core architectural invariants. Invariants are only considered "PROVEN" when backed by automated, reproducible execution suites (migration triggers, invariant scripts, or end-to-end integration tests).
+The ten invariants in `README.md` are the product. They are contractual
+commitments to members and enterprise buyers, so each one needs an enforcement
+point in code **and** an executable proof that fails when the enforcement is
+removed.
+
+This register tracks both. A claim with no proof is listed as unproven, however
+confident the surrounding prose is.
+
+**Status legend**
+- ✅ **Proven** — executed against a real PostgreSQL instance (or real code) in CI, and confirmed to fail when the control is removed.
+- 🟡 **Partial** — exercised, but against an in-memory simulation rather than the deployed path. Real unit value; not proof the product enforces it.
+- ❌ **Unproven** — enforced somewhere, but nothing in CI would catch a regression.
+
+The distinction between ✅ and 🟡 is deliberate and load-bearing. A test that
+models Postgres in JavaScript passes identically whether or not the migration
+was ever applied — this repository has twice shipped a "proof" of that kind.
 
 ---
 
-## Invariant Scorecard
-
-| # | Invariant | Enforcement Mechanism | Verification Suite | Status |
+| # | Invariant | Enforcement point | Proof | Status |
 |---|---|---|---|---|
-| **1** | Postgres is the Product | Canonical Postgres tables & SQL views | `packages/db/tests/schema.test.ts` | 🟡 Active |
-| **2** | Zero Client Secrets | Secret isolation; client bundle scanner | `scripts/invariants/check-no-client-secrets.mjs` | 🟢 **PROVEN** |
-| **3** | 100% Forced RLS & View Isolation | `ENABLE` + `FORCE RLS` on 26 tables; `security_invoker = true` on 5 views | `scripts/invariants/check-rls-coverage.mjs`, `packages/db/tests/tenant-isolation.spec.ts` | 🟢 **PROVEN** |
-| **4** | Clock Starts at Packet Ready | Gated intro dispatch & SLA clocks | `packages/policy-engine/src/rules/packet.ts`, `packages/db/tests/economics-and-invariants.spec.ts` | 🟢 **PROVEN (WS4)** |
-| **5** | Named Human Champions | `intros.person_id NOT NULL` foreign key | `scripts/invariants/check-intro-person-constraint.mjs` | 🟢 **PROVEN** |
-| **6** | 5+5 Target Account Limit | `trg_enforce_account_target_limits` on `INSERT OR UPDATE` | `packages/db/tests/tenant-isolation.spec.ts` | 🟢 **PROVEN (WS1)** |
-| **7** | 180-Day Decline Cooldown | Re-approach cooldown constraint | `packages/db/src/schema/intros.ts` | ⚪ Pending |
-| **8** | Loaded COGS Discipline | 15 members/operator; 15 hrs/yr at \$120/hr cap | `public.unit_econ_run` view, `packages/db/tests/economics-and-invariants.spec.ts` | 🟢 **PROVEN (WS4)** |
-| **9** | Capped Success Fees | 8% fee capped at \$8,000 on Net 15 | `apps/api/src/routes/attestations.ts`, `packages/db/tests/economics-and-invariants.spec.ts` | 🟢 **PROVEN (WS4)** |
-| **10** | Keep-90 Bounty Ledger | \$500 referral bounty on Day 91 post-keep | `apps/api/src/routes/jobs.ts`, `packages/db/tests/economics-and-invariants.spec.ts` | 🟢 **PROVEN (WS4)** |
+| 1 | **Postgres is the product** | `supabase/migrations/*` | All 12 migrations execute in CI via `pnpm db:setup` | 🟡 |
+| 2 | **Zero client secrets** | Isolation in `apps/api` | `check-no-client-secrets.mjs` (source only — not built bundles) | ✅ |
+| 3 | **100% forced RLS + view isolation** | migrations 006, WS1 | `check-rls-coverage.mjs` — live `pg_class`/`pg_policies`/`reloptions`: 26/26 tables, 5/5 views; `rls-authz.spec.ts` | ✅ |
+| 4 | **Clock starts at packet ready** | `packages/policy-engine/src/rules/packet.ts` | `economics-and-invariants.spec.ts` — in-memory | 🟡 |
+| 5 | **Named human champions** | `intros.person_id NOT NULL` | `business-invariants.spec.ts` (live) + `check-intro-person-constraint.mjs` | ✅ |
+| 6 | **5 primary + 5 bench cap** | `trg_enforce_account_target_limits` — `BEFORE INSERT OR UPDATE` | `business-invariants.spec.ts` (live), incl. the UPDATE-promotion bypass | ✅ |
+| 7 | **180-day decline cooldown** | `trg_intro_decline_cooldown` | `business-invariants.spec.ts` (live) — sets cooldown on decline, not on other results | ✅ |
+| 8 | **Loaded COGS discipline** | `tick-hours` cron, `unit_econ_run` | `economics-and-invariants.spec.ts` — in-memory | 🟡 |
+| 9 | **Capped success fees** | `apps/api/src/routes/attestations.ts` | `attestations.test.ts` (mocked clients) + in-memory | 🟡 |
+| 10 | **Keep-90 bounty ledger** | `tick-keep90` cron | `economics-and-invariants.spec.ts` — in-memory | 🟡 |
 
-> [!NOTE]
-> **Invariant 6 Verification Audit (Phase 4 WS1)**:
-> Invariant 6 was previously marked as proven, but was identified during the independent Codex and Claude Phase 4 scoping review as vulnerable to an `UPDATE` bypass (the database trigger originally fired only `BEFORE INSERT`, allowing an attacker to insert 5 primary + 1 bench target and update the bench row to primary, yielding 6 primary targets).
-> The proven invariant baseline was accordingly dropped to **4 proven invariants** prior to remediation. With WS1, the trigger has been hardened to `BEFORE INSERT OR UPDATE` on `public.account_targets` with target identity exclusion (`id != NEW.id`), and verified against the UPDATE exploit in `packages/db/tests/tenant-isolation.spec.ts`.
+**Current coverage: 5 proven, 5 partial, 0 unproven.**
 
 ---
 
-## Detailed Invariant Profiles
+## Resolved defects
 
-### Invariant 1: Postgres is the Product
-- **Rule**: State does not live in ephemeral workers or in-memory caches. Every introduction, SLA clock, stage transition, and attestation is stored in Postgres tables and SQL views.
-- **Verification**: Schema definitions in `packages/db/src/schema` and migrations in `supabase/migrations`.
+### Invariant 6 — UPDATE bypassed the cap (closed in WS1)
 
-### Invariant 2: Zero Client Secrets
-- **Rule**: Service role keys, Stripe secret keys, Resend API keys, and cron secret tokens must never appear in `apps/web` or browser client bundles.
-- **Verification**: Automated scanner `scripts/invariants/check-no-client-secrets.mjs` executes on every build and CI run.
+The trigger fired `BEFORE INSERT` only. Inserting 5 primary + 1 bench and then
+updating the bench row to primary yielded **6 primary targets**. Reproduced on a
+live database during Phase 4 scoping, while the invariant was marked proven —
+the test suite only ever exercised INSERT.
 
-### Invariant 3: 100% Forced RLS & View Security Invoker
-- **Rule**: All 26 public tables have `ENABLE ROW LEVEL SECURITY` and `FORCE ROW LEVEL SECURITY`. All 5 normative SQL views (`member_funnel`, `programs_sla`, `cohort_card`, `partner_scorecard`, `unit_econ_run`) enforce `security_invoker = true`.
-- **Verification**: `scripts/invariants/check-rls-coverage.mjs` and `packages/db/tests/tenant-isolation.spec.ts`.
+Closed by firing on `BEFORE INSERT OR UPDATE` with target identity exclusion.
+The regression test is mutation-verified: reverting the trigger to INSERT-only
+makes it fail.
 
-### Invariant 4: Clock Starts at Packet Ready
-- **Rule**: Introductions cannot be drafted or sent while "The File" packet is in a `blocked` status.
-- **Verification**: Policy engine packet rule (`packages/policy-engine/src/rules/packet.ts`) and WS3 customer journey integration.
+### Invariant 3 — all five views bypassed RLS (closed in WS1)
 
-### Invariant 5: Named Human Champions
-- **Rule**: Every introduction strictly requires a named human champion (`intros.person_id NOT NULL`). Events cannot be promoted to introductions without a human champion.
-- **Verification**: Schema constraint verified by `scripts/invariants/check-intro-person-constraint.mjs`.
+None of the five normative views set `security_invoker`, so each executed as its
+owner, a `BYPASSRLS` role. Reproduced on a live database: in one session as one
+unprivileged role, `organizations` returned **0 rows** while `member_funnel` and
+`unit_econ_run` returned **every tenant**, including cross-tenant unit economics.
 
-### Invariant 6: 5+5 Target Account Limit
-- **Rule**: An organization may never have more than 5 primary and 5 bench targets concurrently.
-- **Vulnerability Closed**: Hardened trigger `trg_enforce_account_target_limits` to fire `BEFORE INSERT OR UPDATE`. Mutation tests in `packages/db/tests/tenant-isolation.spec.ts` prove that attempting to update a bench target to primary when 5 primary targets exist is rejected.
+Closed by `ALTER VIEW … SET (security_invoker = true)` on all five. The invariant
+check now reads `pg_class.reloptions` rather than matching migration text, so a
+later `CREATE OR REPLACE VIEW` — which silently resets the option — fails CI.
 
-### Invariant 7: 180-Day Decline Cooldown
-- **Rule**: If an enterprise buyer declines an introduction, a 180-day cooldown must elapse before any re-approach can be initiated.
+## Open defects
 
-### Invariant 8: Loaded COGS Discipline
-- **Rule**: Operators manage a maximum of 15 members; loaded operator COGS must not exceed 15 annual hours per member at \$120/hour (\$1,800 cap on a \$4,800 contract).
+### Invariant 6 — the cap trigger still has a concurrency race
 
-### Invariant 9: Capped Success Fees
-- **Rule**: Success fees on resulting purchase orders are fixed at 8% of the initial subcontract value, strictly capped at \$8,000 on Net 15 terms.
+`trg_enforce_account_target_limits()` runs `SELECT COUNT(*)` then compares. Two
+concurrent inserts both observe four rows and both succeed, yielding six. The
+tests are sequential, so they pass.
 
-### Invariant 10: Keep-90 Bounty Ledger
-- **Rule**: Partner referral bounties (\$500) are paid out only after the 90-day retention period without a refund.
+Closing this needs either `pg_advisory_xact_lock` on `org_id` inside the trigger
+or a counter column with a `CHECK`. It is a design decision about the write
+pattern, so it is tracked rather than guessed at.
+
+### Invariants 4, 8, 9 and 10 — proven only in simulation
+
+`economics-and-invariants.spec.ts` models the rules in JavaScript. It has genuine
+value: it pins the 8% / $8,000 arithmetic, the Day-91 bounty schedule and the
+COGS ceiling. But it does not execute `apps/api/src/routes/jobs.ts`, the cron
+handlers, or the SQL those rules actually run as, so a regression in the deployed
+path would not fail it.
+
+Moving these to ✅ means driving the real cron handlers and the real SQL against
+the live test database the harness already provides.
+
+---
+
+## Rules for changing this register
+
+1. Adding a table, trigger or constraint that implements an invariant means
+   adding its proof in the same pull request.
+2. A status may only move toward ✅ on evidence. Moving a row to 🟡 or ❌
+   requires saying why in the pull request description.
+3. "The test passes" is not evidence a control works. Verify by removing the
+   control and confirming the test fails — see `docs/SECURITY-POLICY.md` §4.
+4. A simulation of a database is not a database. If the enforcement point is SQL,
+   the proof runs SQL.

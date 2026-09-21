@@ -2,6 +2,7 @@
   "name": "magnus-procura",
   "private": true,
   "version": "1.0.0",
+  "packageManager": "pnpm@12.5.1",
   "type": "module",
   "scripts": {
     "dev": "pnpm --parallel dev",
@@ -10,14 +11,14 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r --if-present test && pnpm test:invariants",
-    "test:invariants": "node scripts/invariants/check-no-client-secrets.mjs && node scripts/invariants/check-rls-coverage.mjs && node scripts/invariants/check-intro-person-constraint.mjs"
+    "test:invariants": "node scripts/invariants/check-no-client-secrets.mjs && node scripts/invariants/check-rls-coverage.mjs && node scripts/invariants/check-intro-person-constraint.mjs",
+    "db:setup": "node scripts/db/apply-migrations.mjs",
+    "pretest": "pnpm build"
   },
   "devDependencies": {
     "@types/node": "^22.13.4",
     "typescript": "~5.8.2",
-    "vitest": "^3.0.7"
-  },
-  "overrides": {
-    "postcss": ">=8.5.23"
+    "vitest": "^3.0.7",
+    "pg": "^8.13.1"
   }
 }

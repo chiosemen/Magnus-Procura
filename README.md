@@ -17,6 +17,16 @@ Magnus Procura is organized as a high-performance `pnpm` monorepo:
 
 ---
 
+## Engineering Contract
+
+Before changing anything here, read:
+
+- [`docs/SECURITY-POLICY.md`](docs/SECURITY-POLICY.md) — binding, OWASP-grounded security rules
+- [`docs/INVARIANTS.md`](docs/INVARIANTS.md) — the ten invariants, their enforcement points, and which are actually proven
+- [`AGENTS.md`](AGENTS.md) — working rules for agent-authored changes
+
+---
+
 ## Core Invariants & Architectural Contracts
 
 1. **Postgres is the Product**: Every introduction, SLA clock, stage transition, and attestation is stored in Postgres tables and SQL views.
@@ -65,7 +75,15 @@ pnpm dev:api
 
 ## Testing & Quality Verification
 
+> **Database required.** Migrations are executed against a real PostgreSQL
+> instance, not pattern-matched. Set `DATABASE_URL` and run `pnpm db:setup`
+> before the test suites; `check-rls-coverage` and the RLS authorization tests
+> query the live catalog and fail closed in CI when no database is reachable.
+
 ```bash
+# Apply all migrations to a real PostgreSQL database
+pnpm db:setup
+
 # Run strict TypeScript checks across all workspaces
 pnpm typecheck
 

@@ -36,11 +36,14 @@ export const createGeminiProvider = (config: GeminiProviderConfig): LlmProvider 
 
   const generateText = async (_ctx: AgentContext, request: GenerateTextRequest): Promise<GenerateTextResult> => {
     const model = requireString(request.model, 'Gemini model');
-    const endpoint = `${baseUrl}/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    // The API key is sent as a header, never as a query parameter. Keys placed
+    // in a URL are captured by proxy logs, server access logs and error-tracker
+    // breadcrumbs, all of which routinely outlive the key itself.
+    const endpoint = `${baseUrl}/v1beta/models/${encodeURIComponent(model)}:generateContent`;
 
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: `${request.system}\n\n${request.user}` }] }],
         generationConfig: { temperature: 0 }

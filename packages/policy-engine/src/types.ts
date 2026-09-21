@@ -75,3 +75,11 @@ export class PolicyFailClosedError extends PolicyEngineError {
   }
 }
 
+
+/** Raised when a policy batch has already been evaluated and recorded. */
+export class DuplicatePolicyBatchError extends PolicyEngineError {
+  public override readonly name: string = 'DuplicatePolicyBatchError';
+  public constructor(message: string) {
+    super(message);
+  }
+}

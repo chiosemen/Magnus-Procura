@@ -1,4 +1,8 @@
-const secretKeyPattern = /(api[-_]?key|authorization|token|secret|password|session|cookie)/i;
+// Credentials, plus the identity and compliance fields this product actually
+// handles: supplier tax identity, insurance and banking details. A procurement
+// readiness platform leaks EINs and DUNS numbers long before it leaks a token.
+const secretKeyPattern =
+  /(api[-_]?key|authorization|bearer|token|secret|password|passwd|session|cookie|credential|private[-_]?key|access[-_]?key|signature|ssn|social[-_]?security|ein|tax[-_]?id|vat|duns|cage[-_]?code|routing[-_]?number|account[-_]?number|iban|swift|card[-_]?number|cvv)/i;
 
 export const redactString = (value: string): string => {
   if (value.length <= 6) {

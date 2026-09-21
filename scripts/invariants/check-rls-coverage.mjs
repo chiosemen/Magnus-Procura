@@ -1,104 +1,148 @@
 #!/usr/bin/env node
 /**
- * Invariant Check: 100% RLS Coverage and FORCE ROW LEVEL SECURITY on All Tables
- * 
- * Inspects all production SQL migrations to ensure all 25 tables have:
- * 1. ALTER TABLE <table> ENABLE ROW LEVEL SECURITY;
- * 2. ALTER TABLE <table> FORCE ROW LEVEL SECURITY;
- * 3. At least one CREATE POLICY defined.
+ * Invariant Check: RLS coverage on tables AND view security_invoker
+ *
+ * Queries the live PostgreSQL catalog on a database built by
+ * scripts/db/apply-migrations.mjs. It asserts:
+ *
+ *   Tables (pg_class / pg_policies), for every table in `public`:
+ *     1. relrowsecurity      — ENABLE ROW LEVEL SECURITY
+ *     2. relforcerowsecurity — FORCE ROW LEVEL SECURITY (owner is not exempt)
+ *     3. at least one policy in pg_policies
+ *
+ *   Views (pg_class.reloptions), for every view in `public`:
+ *     4. security_invoker = true
+ *
+ * Rule 4 exists because a view without security_invoker executes as its OWNER.
+ * The migrations' owner holds BYPASSRLS, so such a view returns every tenant's
+ * rows to any caller who can select from it, even though the underlying tables
+ * have forced RLS. This was confirmed against a live database: the
+ * `organizations` table returned 0 rows to an unprivileged role in the same
+ * session where `member_funnel` and `unit_econ_run` returned every tenant.
+ *
+ * Both checks read the catalog rather than pattern-matching migration text.
+ * Matching text proves only that a string appears in a file: it cannot detect a
+ * statement that failed to apply, was later overridden, or was applied to a
+ * view that a subsequent CREATE OR REPLACE reset.
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import pg from 'pg';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const rootDir = path.resolve(__dirname, '../..');
-const migrationsDir = path.resolve(rootDir, 'supabase/migrations');
+// Tables that are infrastructure rather than tenant data. Anything not listed
+// here is treated as an application table and must carry forced RLS.
+const EXEMPT_TABLES = new Set([
+  'schema_migrations',
+]);
 
-const EXPECTED_TABLES = [
-  'profiles',
-  'organizations',
-  'org_members',
-  'programs',
-  'fit_reviews',
-  'packets',
-  'artifacts',
-  'account_targets',
-  'people',
-  'intros',
-  'stage_transitions',
-  'events',
-  'opportunities',
-  'attestations',
-  'partners',
-  'referrals',
-  'bounties',
-  'invoices',
-  'operator_assignments',
-  'operator_hours',
-  'cohorts',
-  'cohort_members',
-  'score_snapshots',
-  'audit_log',
-  'stripe_events',
-  'do_not_serve'
-];
+const connectionString = process.env.DATABASE_URL;
 
-const EXPECTED_VIEWS = [
-  'member_funnel',
-  'programs_sla',
-  'cohort_card',
-  'partner_scorecard',
-  'unit_econ_run'
-];
+console.log('🔒 Running Invariant Check: check-rls-coverage (live catalog: tables + views)...');
 
-console.log('🔒 Running Invariant Check: check-rls-coverage (Tables + Views)...');
-
-if (!fs.existsSync(migrationsDir)) {
-  console.error(`❌ Migrations directory not found: ${migrationsDir}`);
+if (!connectionString) {
+  // Fail closed in CI: a skipped security check must never read as a pass.
+  if (process.env.CI) {
+    console.error('❌ DATABASE_URL is not set. RLS coverage cannot be verified in CI.');
+    process.exit(1);
+  }
+  console.error('❌ DATABASE_URL is not set.');
+  console.error('   Start a local Postgres and run: pnpm db:setup');
   process.exit(1);
 }
 
-// Concatenate all SQL migration contents
-const sqlFiles = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql'));
-const allSql = sqlFiles.map(f => fs.readFileSync(path.join(migrationsDir, f), 'utf8')).join('\n');
+const client = new pg.Client({ connectionString });
 
-let errors = [];
-
-EXPECTED_TABLES.forEach((table) => {
-  const enableRegex = new RegExp(`ALTER\\s+TABLE\\s+(public\\.)?${table}\\s+ENABLE\\s+ROW\\s+LEVEL\\s+SECURITY`, 'i');
-  const forceRegex = new RegExp(`ALTER\\s+TABLE\\s+(public\\.)?${table}\\s+FORCE\\s+ROW\\s+LEVEL\\s+SECURITY`, 'i');
-  const policyRegex = new RegExp(`CREATE\\s+POLICY\\s+("[^"]+"|[a-zA-Z0-9_]+)\\s+ON\\s+(public\\.)?${table}\\b`, 'i');
-
-  if (!enableRegex.test(allSql)) {
-    errors.push(`Table "${table}" is missing ENABLE ROW LEVEL SECURITY`);
-  }
-  if (!forceRegex.test(allSql)) {
-    errors.push(`Table "${table}" is missing FORCE ROW LEVEL SECURITY`);
-  }
-  if (!policyRegex.test(allSql)) {
-    errors.push(`Table "${table}" has no explicit CREATE POLICY declared`);
-  }
-});
-
-EXPECTED_VIEWS.forEach((view) => {
-  // Check for either ALTER VIEW ... SET (security_invoker = true) or CREATE VIEW ... WITH (security_invoker = true)
-  const alterInvokerRegex = new RegExp(`ALTER\\s+VIEW\\s+(public\\.)?${view}\\s+SET\\s*\\(\\s*security_invoker\\s*=\\s*true\\s*\\)`, 'i');
-  const withInvokerRegex = new RegExp(`CREATE\\s+(OR\\s+REPLACE\\s+)?VIEW\\s+(public\\.)?${view}\\s+WITH\\s*\\(\\s*security_invoker\\s*=\\s*true\\s*\\)`, 'i');
-
-  if (!alterInvokerRegex.test(allSql) && !withInvokerRegex.test(allSql)) {
-    errors.push(`View "${view}" is missing security_invoker = true (RLS bypass vulnerability)`);
-  }
-});
-
-if (errors.length > 0) {
-  console.error(`❌ RLS COVERAGE VIOLATIONS (${errors.length}):`);
-  errors.forEach((err) => console.error(`  - ${err}`));
+try {
+  await client.connect();
+} catch (err) {
+  console.error(`❌ Could not connect to the database: ${err.message}`);
   process.exit(1);
-} else {
-  console.log(`✅ PASS: All ${EXPECTED_TABLES.length} tables have ENABLE + FORCE ROW LEVEL SECURITY and active policies.`);
-  console.log(`✅ PASS: All ${EXPECTED_VIEWS.length} SQL views enforce security_invoker = true (zero tenant leakage).`);
-  process.exit(0);
+}
+
+try {
+  const { rows: tableRows } = await client.query(`
+    SELECT
+      c.relname                        AS table_name,
+      c.relrowsecurity                 AS rls_enabled,
+      c.relforcerowsecurity            AS rls_forced,
+      COALESCE(p.policy_count, 0)::int AS policy_count
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    LEFT JOIN (
+      SELECT schemaname, tablename, COUNT(*) AS policy_count
+      FROM pg_policies
+      WHERE schemaname = 'public'
+      GROUP BY schemaname, tablename
+    ) p ON p.tablename = c.relname AND p.schemaname = n.nspname
+    WHERE n.nspname = 'public'
+      AND c.relkind = 'r'
+    ORDER BY c.relname;
+  `);
+
+  // Views and materialized views. reloptions carries security_invoker when set.
+  const { rows: viewRows } = await client.query(`
+    SELECT
+      c.relname AS view_name,
+      COALESCE(
+        (SELECT option_value
+         FROM pg_options_to_table(c.reloptions)
+         WHERE option_name = 'security_invoker'),
+        'not set'
+      ) AS security_invoker
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relkind IN ('v', 'm')
+    ORDER BY c.relname;
+  `);
+
+  const tables = tableRows.filter((r) => !EXEMPT_TABLES.has(r.table_name));
+
+  if (tables.length === 0) {
+    console.error('❌ No tables found in schema "public" — migrations were not applied.');
+    process.exit(1);
+  }
+
+  const errors = [];
+
+  for (const t of tables) {
+    if (!t.rls_enabled) {
+      errors.push(`Table "${t.table_name}" does not have ROW LEVEL SECURITY enabled`);
+    }
+    if (!t.rls_forced) {
+      errors.push(`Table "${t.table_name}" does not have FORCE ROW LEVEL SECURITY`);
+    }
+    if (t.policy_count === 0) {
+      errors.push(`Table "${t.table_name}" has RLS enabled but no policies (deny-all)`);
+    }
+  }
+
+  for (const v of viewRows) {
+    if (String(v.security_invoker).toLowerCase() !== 'true') {
+      errors.push(
+        `View "${v.view_name}" has security_invoker=${v.security_invoker} — ` +
+        `it executes as its owner and bypasses RLS on the underlying tables (cross-tenant leak)`
+      );
+    }
+  }
+
+  if (errors.length > 0) {
+    console.error(`\n❌ RLS coverage check FAILED with ${errors.length} violation(s):`);
+    errors.forEach((e) => console.error(`   - ${e}`));
+    process.exit(1);
+  }
+
+  const totalPolicies = tables.reduce((sum, t) => sum + t.policy_count, 0);
+  console.log(
+    `✅ PASS: ${tables.length}/${tables.length} tables have ENABLE + FORCE ROW LEVEL SECURITY ` +
+    `and at least one policy (${totalPolicies} policies verified in pg_policies).`
+  );
+  console.log(
+    `✅ PASS: ${viewRows.length}/${viewRows.length} views enforce security_invoker = true ` +
+    `(verified in pg_class.reloptions, not migration text).`
+  );
+} catch (err) {
+  console.error(`❌ RLS coverage check errored: ${err.message}`);
+  process.exit(1);
+} finally {
+  await client.end();
 }

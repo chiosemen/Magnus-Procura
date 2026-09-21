@@ -12,7 +12,7 @@ export type {
   PolicyStatus
 } from './types.js';
 
-export { PolicyEngineError, PolicyRuleRegistrationError, PolicyFailClosedError } from './types.js';
+export { PolicyEngineError, PolicyRuleRegistrationError, PolicyFailClosedError, DuplicatePolicyBatchError } from './types.js';
 
 export { PolicyRuleRegistry } from './registry.js';
 export { evaluateRules } from './evaluator.js';
