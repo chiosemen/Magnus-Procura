@@ -175,6 +175,15 @@ async function runQbrTick() {
   }
 }
 
+async function interruptibleSleep(ms: number) {
+  const stepMs = 500;
+  let elapsed = 0;
+  while (isRunning && elapsed < ms) {
+    await new Promise((resolve) => setTimeout(resolve, stepMs));
+    elapsed += stepMs;
+  }
+}
+
 async function runLoop() {
   console.log('[Magnus Worker] Worker loop started. Polling every 60 seconds.');
 
@@ -187,8 +196,8 @@ async function runLoop() {
       console.error('[Magnus Worker] Error in worker tick:', err);
     }
 
-    // Wait 60s between ticks unless shutdown requested
-    await new Promise((resolve) => setTimeout(resolve, 60000));
+    // Wait 60s between ticks unless shutdown requested (interruptible on SIGTERM/SIGINT)
+    await interruptibleSleep(60000);
   }
 
   console.log('[Magnus Worker] Worker loop stopped gracefully.');

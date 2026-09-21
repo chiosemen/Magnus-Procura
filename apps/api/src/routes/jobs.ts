@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import crypto from 'node:crypto';
 import { getSupabaseAdmin } from '../lib/supabase';
 import { 
   sendSlaWarningEmail, 
@@ -9,14 +10,34 @@ import { writeAuditLog } from '../lib/audit';
 
 const jobs = new Hono();
 
-// Auth Middleware for cron tasks
+function timingSafeEqualStr(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+// Auth Middleware for cron tasks: Fail-Closed & Constant-Time Verification
 jobs.use('*', async (c, next) => {
   const authHeader = c.req.header('Authorization');
   const expectedSecret = process.env.CRON_SECRET;
 
-  if (expectedSecret && authHeader !== `Bearer ${expectedSecret}`) {
+  if (process.env.NODE_ENV === 'test') {
+    if (!expectedSecret || (authHeader && authHeader === `Bearer ${expectedSecret}`)) {
+      return next();
+    }
+  }
+
+  if (!expectedSecret) {
+    console.error('[Jobs] CRON_SECRET is not configured in environment. Rejecting cron request.');
+    return c.json({ error: 'Unauthorized: Cron service unconfigured' }, 401);
+  }
+
+  const expectedHeader = `Bearer ${expectedSecret}`;
+  if (!authHeader || !timingSafeEqualStr(authHeader, expectedHeader)) {
     return c.json({ error: 'Unauthorized: Invalid CRON_SECRET' }, 401);
   }
+
   await next();
 });
 

@@ -1,10 +1,18 @@
 import { Hono } from 'hono';
+import crypto from 'node:crypto';
 import Stripe from 'stripe';
 import { stripe } from '../lib/stripe';
 import { getSupabaseAdmin } from '../lib/supabase';
 import { writeAuditLog } from '../lib/audit';
 
 const webhooks = new Hono();
+
+function timingSafeEqualStr(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
 
 webhooks.post('/stripe', async (c) => {
   const sig = c.req.header('stripe-signature');
@@ -204,14 +212,22 @@ webhooks.post('/stripe', async (c) => {
 });
 
 webhooks.post('/resend', async (c) => {
-  // Resend webhook secret authentication
+  // Resend webhook secret authentication: Fail-Closed & Constant-Time Verification
   const authHeader = c.req.header('Authorization');
   const tokenHeader = c.req.header('x-resend-signature') || c.req.header('x-resend-token');
   const expectedSecret = process.env.RESEND_WEBHOOK_SECRET;
 
-  if (expectedSecret && process.env.NODE_ENV !== 'test') {
+  if (process.env.NODE_ENV !== 'test') {
+    if (!expectedSecret) {
+      console.error('[Webhooks] Missing RESEND_WEBHOOK_SECRET in production. Rejecting unverified webhook.');
+      return c.json({ error: 'Missing webhook signature or unconfigured secret' }, 401);
+    }
+
     const bearerToken = authHeader?.replace('Bearer ', '').trim();
-    if (bearerToken !== expectedSecret && tokenHeader !== expectedSecret) {
+    const isBearerValid = bearerToken ? timingSafeEqualStr(bearerToken, expectedSecret) : false;
+    const isTokenValid = tokenHeader ? timingSafeEqualStr(tokenHeader, expectedSecret) : false;
+
+    if (!isBearerValid && !isTokenValid) {
       return c.json({ error: 'Unauthorized: Invalid Resend webhook secret' }, 401);
     }
   }

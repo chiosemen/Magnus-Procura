@@ -22,7 +22,9 @@ const webSrcDir = path.resolve(rootDir, 'apps/web/src');
 const FORBIDDEN_SECRETS = [
   'SUPABASE_SERVICE_ROLE_KEY',
   'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
   'RESEND_API_KEY',
+  'RESEND_WEBHOOK_SECRET',
   'CRON_SECRET',
   'service_role'
 ];

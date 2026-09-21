@@ -5,8 +5,16 @@
  * Verifies that all required production environment variables are present and correctly formatted.
  */
 
-import dotenv from 'dotenv';
-dotenv.config();
+import fs from 'node:fs';
+
+// Load .env if present using Node 22 built-in loader
+if (fs.existsSync('.env')) {
+  try {
+    process.loadEnvFile('.env');
+  } catch {
+    // Non-blocking
+  }
+}
 
 const REQUIRED_ENV = [
   { name: 'SUPABASE_URL', pattern: /^https:\/\/[a-z0-9-]+\.supabase\.co/ },
@@ -48,8 +56,13 @@ if (missing.length > 0 || invalid.length > 0) {
     console.warn(`⚠️ INVALID FORMAT (${invalid.length}):`);
     invalid.forEach((i) => console.warn(`   - ${i}`));
   }
+  if (process.env.NODE_ENV === 'production' || process.env.STRICT_ENV_CHECK === 'true') {
+    console.error('\n❌ FATAL: Production environment validation failed. Halting deployment.');
+    process.exit(1);
+  }
+
   console.log('\n💡 Note: In CI/staging test environments, placeholder values can be provided via .env.example.');
-  process.exit(0); // Non-blocking in local test runs, exit 1 in production CI
+  process.exit(0);
 } else {
   console.log('✅ PASS: All required production environment variables verified.');
   process.exit(0);

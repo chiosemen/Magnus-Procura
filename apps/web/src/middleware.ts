@@ -30,8 +30,21 @@ export async function middleware(request: NextRequest) {
       },
     });
 
-    // Refresh auth token
-    await supabase.auth.getUser();
+    // Refresh auth token and verify session
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const pathname = request.nextUrl.pathname;
+    const isProtectedPath =
+      pathname.startsWith('/ops') ||
+      pathname.startsWith('/admin') ||
+      pathname.startsWith('/app');
+
+    // Redirect unauthenticated visitors attempting to access internal command centers
+    if (isProtectedPath && !user) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('returnUrl', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
   return response;

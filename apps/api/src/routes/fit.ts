@@ -69,12 +69,9 @@ fit.post('/check-blacklist', async (c) => {
     return c.json({
       blacklisted: isBlacklisted,
       match: isBlacklisted ? {
-        id: match.id,
         entityName: match.entity_name,
         domain: match.domain,
         reason: match.reason,
-        notes: match.notes,
-        createdAt: match.created_at,
       } : null,
     });
   } catch (err: unknown) {

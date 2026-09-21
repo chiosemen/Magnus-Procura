@@ -4,8 +4,12 @@ import { createCheckoutSession, createCustomerPortalSession } from '../lib/strip
 import { getSupabaseAdmin } from '../lib/supabase';
 import { writeAuditLog } from '../lib/audit';
 import { requireAuth } from '../lib/auth';
+import { rateLimit } from '../lib/ratelimit';
 
 const billing = new Hono();
+
+// Enforce strict rate limiting on public checkout session creation (max 10 req/min)
+billing.use('/checkout', rateLimit({ windowMs: 60 * 1000, max: 10, skipInTest: true }));
 
 const checkoutSchema = z.object({
   orgId: z.string().uuid(),
